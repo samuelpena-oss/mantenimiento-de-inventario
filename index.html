@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventario - Inicio</title>
+  <style>
+    :root {
+      --primary: #2f80ed;
+      --bg: #f2f6ff;
+      --card: #ffffff;
+      --text: #1a1a1a;
+      --muted: #6b7280;
+      --shadow: rgba(0, 0, 0, 0.08);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 2rem 1.5rem 2.5rem;
+      clip-path: polygon(0 0, 100% 0, 100% 80%, 0 100%);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 2.1rem;
+      letter-spacing: 0.02em;
+    }
+
+    header p {
+      margin: 0.5rem 0 0;
+      color: rgba(255, 255, 255, 0.9);
+      max-width: 520px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: -4rem auto 2rem;
+      padding: 0 1.5rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .card {
+      background: var(--card);
+      padding: 1.3rem 1.25rem;
+      border-radius: 16px;
+      box-shadow: 0 12px 24px var(--shadow);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .card h2 {
+      margin: 0 0 0.25rem;
+      font-size: 1.1rem;
+    }
+
+    .card p {
+      margin: 0.25rem 0 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .actions {
+      margin-top: 1.2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 0.75rem 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+
+    .btn.primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 10px 18px rgba(47, 128, 237, 0.28);
+    }
+
+    .btn.primary:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn.secondary {
+      background: rgba(47, 128, 237, 0.12);
+      color: var(--primary);
+    }
+
+    .btn.secondary:hover {
+      background: rgba(47, 128, 237, 0.22);
+    }
+
+    .search-box {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.85rem 1.1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.14);
+      font-size: 1rem;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: rgba(47, 128, 237, 0.8);
+      box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.15);
+    }
+
+    .stats {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      margin-top: 1.5rem;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      padding: 1rem 1.1rem;
+      border-radius: 14px;
+      background: rgba(47, 128, 237, 0.08);
+      border: 1px solid rgba(47, 128, 237, 0.18);
+    }
+
+    .stat span {
+      font-weight: 700;
+      font-size: 1.5rem;
+    }
+
+    .stat small {
+      color: var(--muted);
+    }
+
+    @media (max-width: 520px) {
+      header {
+        padding: 1.8rem 1.2rem 2.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Inventario - Panel de inicio</h1>
+    <p>
+      Controla tu stock con rapidez: agrega productos, revisa niveles y genera
+      reportes desde una sola pantalla.
+    </p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div class="search-box">
+        <input
+          id="searchInput"
+          type="search"
+          placeholder="Buscar producto, categoría o código..."
+          aria-label="Buscar inventario"
+        />
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="btnAdd">Agregar producto</button>
+        <button class="btn secondary" id="btnList">Ver inventario</button>
+        <button class="btn secondary" id="btnReport">Generar reporte</button>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <small>Total de productos</small>
+        <span id="statTotal">--</span>
+      </div>
+      <div class="stat">
+        <small>Productos bajo mínimo</small>
+        <span id="statLowStock">--</span>
+      </div>
+      <div class="stat">
+        <small>Última actualización</small>
+        <span id="statUpdated">--</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Ejemplo simple de inicialización rápida (mock)
+    const stats = {
+      total: 421,
+      lowStock: 18,
+      updated: new Date().toLocaleString(),
+    };
+
+    document.getElementById("statTotal").textContent = stats.total;
+    document.getElementById("statLowStock").textContent = stats.lowStock;
+    document.getElementById("statUpdated").textContent = stats.updated;
+
+    document.getElementById("btnAdd").onclick = () => {
+      alert("Abrir formulario para agregar producto.");
+    };
+    document.getElementById("btnList").onclick = () => {
+      alert("Mostrar listado de inventario.");
+    };
+    document.getElementById("btnReport").onclick = () => {
+      alert("Generar reporte de inventario.");
+    };
+  </script>
+</body>
+</html>
