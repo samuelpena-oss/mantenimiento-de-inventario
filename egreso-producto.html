@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Egreso de Producto - Inventario</title>
+  <link rel="stylesheet" href="Styles/Style.css">
+</head>
+<body>
+  <header>
+    <h1>Egreso de Producto</h1>
+    <p>Selecciona un producto y la cantidad a egresar del inventario.</p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <form id="egressProductForm">
+        <div style="margin-bottom: 1rem;">
+          <label for="productSelect">Seleccionar Producto:</label>
+          <select id="productSelect" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+            <option value="">-- Seleccionar --</option>
+          </select>
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label for="egressQuantity">Cantidad a Egresar:</label>
+          <input type="number" id="egressQuantity" min="1" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn primary">Egresar Producto</button>
+          <a href="index.html" class="btn secondary" style="text-decoration: none; color: inherit;">Volver</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    function loadProducts() {
+      return JSON.parse(localStorage.getItem('products')) || [];
+    }
+
+    function saveProducts(products) {
+      localStorage.setItem('products', JSON.stringify(products));
+    }
+
+    function populateProductSelect() {
+      const products = loadProducts();
+      const select = document.getElementById('productSelect');
+      products.forEach(product => {
+        const option = document.createElement('option');
+        option.value = product.id;
+        option.textContent = `${product.name} (Código: ${product.code}) - Disponible: ${product.quantity}`;
+        select.appendChild(option);
+      });
+    }
+
+    document.getElementById('egressProductForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const productId = parseInt(document.getElementById('productSelect').value);
+      const egressQty = parseInt(document.getElementById('egressQuantity').value);
+
+      const products = loadProducts();
+      const product = products.find(p => p.id === productId);
+      if (!product) {
+        alert('Producto no encontrado.');
+        return;
+      }
+      if (egressQty > product.quantity) {
+        alert('Cantidad a egresar supera la disponible.');
+        return;
+      }
+      product.quantity -= egressQty;
+      saveProducts(products);
+      alert('Egreso realizado exitosamente.');
+      window.location.href = 'index.html';
+    });
+
+    populateProductSelect();
+  </script>
+</body>
+</html>

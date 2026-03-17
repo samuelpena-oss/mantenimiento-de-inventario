@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generar Reporte - Inventario</title>
+  <link rel="stylesheet" href="Styles/Style.css">
+</head>
+<body>
+  <header>
+    <h1>Generar Reporte</h1>
+    <p>Reporte resumen del inventario actual.</p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Estadísticas del Inventario</h2>
+      <div id="reportContent">
+        <!-- Reporte se cargará aquí -->
+      </div>
+      <div class="actions" style="margin-top: 1rem;">
+        <button class="btn primary" onclick="printReport()">Imprimir Reporte</button>
+        <a href="index.html" class="btn secondary" style="text-decoration: none; color: inherit;">Volver</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function loadProducts() {
+      return JSON.parse(localStorage.getItem('products')) || [];
+    }
+
+    function generateReport() {
+      const products = loadProducts();
+      const totalProducts = products.length;
+      const totalQuantity = products.reduce((sum, p) => sum + p.quantity, 0);
+      const lowStockProducts = products.filter(p => p.quantity <= p.minStock);
+      const lowStockCount = lowStockProducts.length;
+      const updated = new Date().toLocaleString();
+
+      let report = `
+        <p><strong>Total de Productos:</strong> ${totalProducts}</p>
+        <p><strong>Cantidad Total en Inventario:</strong> ${totalQuantity}</p>
+        <p><strong>Productos con Stock Bajo:</strong> ${lowStockCount}</p>
+        <p><strong>Última Actualización:</strong> ${updated}</p>
+        <h3>Productos con Stock Bajo:</h3>
+        <ul>
+      `;
+      lowStockProducts.forEach(p => {
+        report += `<li>${p.name} (Código: ${p.code}) - Cantidad: ${p.quantity} / Mínimo: ${p.minStock}</li>`;
+      });
+      report += '</ul>';
+
+      document.getElementById('reportContent').innerHTML = report;
+    }
+
+    function printReport() {
+      window.print();
+    }
+
+    generateReport();
+  </script>
+</body>
+</html>

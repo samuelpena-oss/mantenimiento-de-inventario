@@ -28,6 +28,7 @@
 
       <div class="actions">
         <button class="btn primary" id="btnAdd">Agregar producto</button>
+        <button class="btn secondary" id="btnEgress">Egresar producto</button>
         <button class="btn secondary" id="btnList">Ver inventario</button>
         <button class="btn secondary" id="btnReport">Generar reporte</button>
       </div>
@@ -50,25 +51,39 @@
   </main>
 
   <script>
-    // Ejemplo simple de inicialización rápida (mock)
-    const stats = {
-      total: 421,
-      lowStock: 18,
-      updated: new Date().toLocaleString(),
-    };
+    // Cargar productos desde localStorage
+    function loadProducts() {
+      const products = JSON.parse(localStorage.getItem('products')) || [];
+      return products;
+    }
 
-    document.getElementById("statTotal").textContent = stats.total;
-    document.getElementById("statLowStock").textContent = stats.lowStock;
-    document.getElementById("statUpdated").textContent = stats.updated;
+    // Calcular estadísticas
+    function updateStats() {
+      const products = loadProducts();
+      const total = products.length;
+      const lowStock = products.filter(p => p.quantity <= p.minStock).length;
+      const updated = new Date().toLocaleString();
 
+      document.getElementById("statTotal").textContent = total;
+      document.getElementById("statLowStock").textContent = lowStock;
+      document.getElementById("statUpdated").textContent = updated;
+    }
+
+    // Inicializar
+    updateStats();
+
+    // Navegar a páginas
     document.getElementById("btnAdd").onclick = () => {
-      alert("Abrir formulario para agregar producto.");
+      window.location.href = 'agregar-producto.html';
+    };
+    document.getElementById("btnEgress").onclick = () => {
+      window.location.href = 'egreso-producto.html';
     };
     document.getElementById("btnList").onclick = () => {
-      alert("Mostrar listado de inventario.");
+      window.location.href = 'ver-inventario.html';
     };
     document.getElementById("btnReport").onclick = () => {
-      alert("Generar reporte de inventario.");
+      window.location.href = 'generar-reporte.html';
     };
   </script>
 </body>

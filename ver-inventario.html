@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ver Inventario - Inventario</title>
+  <link rel="stylesheet" href="Styles/Style.css">
+</head>
+<body>
+  <header>
+    <h1>Ver Inventario</h1>
+    <p>Lista completa de productos en el inventario.</p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 1px solid #ccc;">
+            <th style="text-align: left; padding: 0.5rem;">Nombre</th>
+            <th style="text-align: left; padding: 0.5rem;">Categoría</th>
+            <th style="text-align: left; padding: 0.5rem;">Código</th>
+            <th style="text-align: left; padding: 0.5rem;">Cantidad</th>
+            <th style="text-align: left; padding: 0.5rem;">Stock Mínimo</th>
+            <th style="text-align: left; padding: 0.5rem;">Estado</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryTable">
+          <!-- Productos se cargarán aquí -->
+        </tbody>
+      </table>
+      <div class="actions" style="margin-top: 1rem;">
+        <a href="index.html" class="btn secondary" style="text-decoration: none; color: inherit;">Volver</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function loadProducts() {
+      return JSON.parse(localStorage.getItem('products')) || [];
+    }
+
+    function renderInventory() {
+      const products = loadProducts();
+      const tbody = document.getElementById('inventoryTable');
+      tbody.innerHTML = '';
+      products.forEach(product => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #eee';
+        const status = product.quantity <= product.minStock ? 'Bajo Stock' : 'Normal';
+        const statusColor = product.quantity <= product.minStock ? 'red' : 'green';
+        row.innerHTML = `
+          <td style="padding: 0.5rem;">${product.name}</td>
+          <td style="padding: 0.5rem;">${product.category}</td>
+          <td style="padding: 0.5rem;">${product.code}</td>
+          <td style="padding: 0.5rem;">${product.quantity}</td>
+          <td style="padding: 0.5rem;">${product.minStock}</td>
+          <td style="padding: 0.5rem; color: ${statusColor};">${status}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    renderInventory();
+  </script>
+</body>
+</html>

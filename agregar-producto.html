@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agregar Producto - Inventario</title>
+  <link rel="stylesheet" href="Styles/Style.css">
+</head>
+<body>
+  <header>
+    <h1>Agregar Producto</h1>
+    <p>Completa los detalles para agregar un nuevo producto al inventario.</p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <form id="addProductForm">
+        <div style="margin-bottom: 1rem;">
+          <label for="name">Nombre del Producto:</label>
+          <input type="text" id="name" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label for="category">Categoría:</label>
+          <input type="text" id="category" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label for="code">Código:</label>
+          <input type="text" id="code" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label for="quantity">Cantidad:</label>
+          <input type="number" id="quantity" min="0" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label for="minStock">Stock Mínimo:</label>
+          <input type="number" id="minStock" min="0" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn primary">Agregar Producto</button>
+          <a href="index.html" class="btn secondary" style="text-decoration: none; color: inherit;">Volver</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    function loadProducts() {
+      return JSON.parse(localStorage.getItem('products')) || [];
+    }
+
+    function saveProducts(products) {
+      localStorage.setItem('products', JSON.stringify(products));
+    }
+
+    document.getElementById('addProductForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const category = document.getElementById('category').value;
+      const code = document.getElementById('code').value;
+      const quantity = parseInt(document.getElementById('quantity').value);
+      const minStock = parseInt(document.getElementById('minStock').value);
+
+      const products = loadProducts();
+      const newProduct = {
+        id: Date.now(), // simple ID
+        name,
+        category,
+        code,
+        quantity,
+        minStock
+      };
+      products.push(newProduct);
+      saveProducts(products);
+      alert('Producto agregado exitosamente.');
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>
