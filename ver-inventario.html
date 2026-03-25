@@ -17,12 +17,14 @@
       <table style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr style="border-bottom: 1px solid #ccc;">
+            <th style="text-align: left; padding: 0.5rem;"><input type="checkbox" id="selectAll"></th>
             <th style="text-align: left; padding: 0.5rem;">Nombre</th>
             <th style="text-align: left; padding: 0.5rem;">Categoría</th>
             <th style="text-align: left; padding: 0.5rem;">Código</th>
             <th style="text-align: left; padding: 0.5rem;">Cantidad</th>
             <th style="text-align: left; padding: 0.5rem;">Stock Mínimo</th>
             <th style="text-align: left; padding: 0.5rem;">Estado</th>
+            <th style="text-align: left; padding: 0.5rem;">Acciones</th>
           </tr>
         </thead>
         <tbody id="inventoryTable">
@@ -30,6 +32,7 @@
         </tbody>
       </table>
       <div class="actions" style="margin-top: 1rem;">
+        <button class="btn secondary" onclick="deleteSelectedProducts()">Eliminar seleccionados</button>
         <a href="index.html" class="btn secondary" style="text-decoration: none; color: inherit;">Volver</a>
       </div>
     </section>
@@ -44,22 +47,52 @@
       const products = loadProducts();
       const tbody = document.getElementById('inventoryTable');
       tbody.innerHTML = '';
-      products.forEach(product => {
+      products.forEach((product, index) => {
         const row = document.createElement('tr');
         row.style.borderBottom = '1px solid #eee';
         const status = product.quantity <= product.minStock ? 'Bajo Stock' : 'Normal';
         const statusColor = product.quantity <= product.minStock ? 'red' : 'green';
         row.innerHTML = `
+          <td style="padding: 0.5rem;"><input type="checkbox" class="product-checkbox" data-index="${index}"></td>
           <td style="padding: 0.5rem;">${product.name}</td>
           <td style="padding: 0.5rem;">${product.category}</td>
           <td style="padding: 0.5rem;">${product.code}</td>
           <td style="padding: 0.5rem;">${product.quantity}</td>
           <td style="padding: 0.5rem;">${product.minStock}</td>
           <td style="padding: 0.5rem; color: ${statusColor};">${status}</td>
+          <td style="padding: 0.5rem;"><button class="btn secondary" onclick="deleteProduct(${index})">Eliminar</button></td>
         `;
         tbody.appendChild(row);
       });
     }
+
+    function deleteProduct(index) {
+      const products = loadProducts();
+      products.splice(index, 1);
+      localStorage.setItem('products', JSON.stringify(products));
+      renderInventory();
+    }
+
+    function deleteSelectedProducts() {
+      const checkboxes = document.querySelectorAll('.product-checkbox:checked');
+      if (checkboxes.length === 0) {
+        alert('Selecciona al menos un producto para eliminar.');
+        return;
+      }
+      const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index)).sort((a, b) => b - a);
+      const products = loadProducts();
+      indices.forEach(index => products.splice(index, 1));
+      localStorage.setItem('products', JSON.stringify(products));
+      renderInventory();
+    }
+
+    function toggleSelectAll() {
+      const selectAll = document.getElementById('selectAll');
+      const checkboxes = document.querySelectorAll('.product-checkbox');
+      checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    }
+
+    document.getElementById('selectAll').addEventListener('change', toggleSelectAll);
 
     renderInventory();
   </script>
