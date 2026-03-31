@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Agregar Producto - Inventario</title>
   <link rel="stylesheet" href="Styles/Style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+  <script src="db.js"></script>
 </head>
 <body>
   <header>
@@ -14,66 +16,105 @@
 
   <main class="container">
     <section class="card">
-      <form id="addProductForm">
-        <div style="margin-bottom: 1rem;">
-          <label for="name">Nombre del Producto:</label>
-          <input type="text" id="name" required style="width: 90%; padding: 1.5rem; border: 1px solid #ccc; border-radius: 4px;">
-        </div>
-        <div style="margin-bottom: 1rem;">
-          <label for="category">Categoría:</label>
-          <input type="text" id="category" required style="width: 100%; padding: 1.5rem; border: 1px solid #ccc; border-radius: 4px;">
-        </div>
-        <div style="margin-bottom: 1rem;">
-          <label for="code">Código:</label>
-          <input type="text" id="code" required style="width: 100%; padding: 1.5rem; border: 1px solid #ccc; border-radius: 4px;">
-        </div>
-        <div style="margin-bottom: 1rem;">
-          <label for="quantity">Cantidad:</label>
-          <input type="number" id="quantity" min="0" required style="width: 100%; padding: 1.5rem; border: 1px solid #ccc; border-radius: 4px;">
-        </div>
-        <div style="margin-bottom: 1rem;">
-          <label for="minStock">Stock Mínimo:</label>
-          <input type="number" id="minStock" min="0" required style="width: 100%; padding: 1.5rem; border: 1px solid #ccc; border-radius: 4px;">
-        </div>
-        <div class="actions">
-          <button type="submit" class="btn primary">Agregar Producto</button>
-          <a href="index.html" class="btn secondary" style="text-decoration: none; color: inherit;">Volver</a>
-        </div>
-      </form>
+      <div id="errorMsg" style="display:none;color:#e53e3e;margin-bottom:1rem;padding:0.75rem;background:#fff5f5;border-radius:8px;border:1px solid #fed7d7;"></div>
+      <div id="successMsg" style="display:none;color:#38a169;margin-bottom:1rem;padding:0.75rem;background:#f0fff4;border-radius:8px;border:1px solid #c6f6d5;"></div>
+
+      <div style="margin-bottom:1rem;">
+        <label for="name">Nombre del Producto:</label>
+        <input type="text" id="name" placeholder="Ej: Teclado Mecánico" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
+      </div>
+      <div style="margin-bottom:1rem;">
+        <label for="category">Categoría:</label>
+        <select id="category" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
+          <option value="">-- Seleccionar categoría --</option>
+        </select>
+      </div>
+      <div style="margin-bottom:1rem;">
+        <label for="code">Código único:</label>
+        <input type="text" id="code" placeholder="Ej: ELEC-005" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
+      </div>
+      <div style="margin-bottom:1rem;">
+        <label for="quantity">Cantidad inicial:</label>
+        <input type="number" id="quantity" min="0" value="0" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
+      </div>
+      <div style="margin-bottom:1.5rem;">
+        <label for="minStock">Stock Mínimo:</label>
+        <input type="number" id="minStock" min="0" value="0" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="btnGuardar">Agregar Producto</button>
+        <a href="index.html" class="btn secondary" style="text-decoration:none;color:inherit;">Volver</a>
+      </div>
     </section>
   </main>
 
   <script>
-    function loadProducts() {
-      return JSON.parse(localStorage.getItem('products')) || [];
+    let db;
+    async function init() {
+      db = await DB.getDB();
+      // Poblar categorías desde la BD
+      const cats = DB.query(db, 'SELECT id, nombre FROM categorias ORDER BY nombre');
+      const sel = document.getElementById('category');
+      cats.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.nombre;
+        sel.appendChild(opt);
+      });
     }
 
-    function saveProducts(products) {
-      localStorage.setItem('products', JSON.stringify(products));
-    }
+    document.getElementById('btnGuardar').addEventListener('click', function () {
+      const nombre     = document.getElementById('name').value.trim();
+      const idCateg    = parseInt(document.getElementById('category').value);
+      const codigo     = document.getElementById('code').value.trim().toUpperCase();
+      const cantidad   = parseInt(document.getElementById('quantity').value);
+      const stockMin   = parseInt(document.getElementById('minStock').value);
+      const errBox     = document.getElementById('errorMsg');
+      const okBox      = document.getElementById('successMsg');
+      errBox.style.display = 'none';
+      okBox.style.display  = 'none';
 
-    document.getElementById('addProductForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const name = document.getElementById('name').value;
-      const category = document.getElementById('category').value;
-      const code = document.getElementById('code').value;
-      const quantity = parseInt(document.getElementById('quantity').value);
-      const minStock = parseInt(document.getElementById('minStock').value);
-
-      const products = loadProducts();
-      const newProduct = {
-        id: Date.now(), // simple ID
-        name,
-        category,
-        code,
-        quantity,
-        minStock
-      };
-      products.push(newProduct);
-      saveProducts(products);
-      alert('Producto agregado exitosamente.');
-      window.location.href = 'index.html';
+      if (!nombre || !idCateg || !codigo) {
+        errBox.textContent = 'Por favor completa todos los campos obligatorios.';
+        errBox.style.display = 'block'; return;
+      }
+      // Verificar código duplicado
+      const dup = DB.query(db, 'SELECT id FROM productos WHERE codigo = ?', [codigo]);
+      if (dup.length) {
+        errBox.textContent = `El código "${codigo}" ya existe en la base de datos.`;
+        errBox.style.display = 'block'; return;
+      }
+      try {
+        DB.run(db,
+          `INSERT INTO productos (nombre, codigo, id_categoria, cantidad, stock_minimo, actualizado)
+           VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+          [nombre, codigo, idCateg, cantidad, stockMin]
+        );
+        // Registrar movimiento de ingreso inicial si cantidad > 0
+        if (cantidad > 0) {
+          const [prod] = DB.query(db, 'SELECT id FROM productos WHERE codigo = ?', [codigo]);
+          DB.run(db,
+            `INSERT INTO movimientos (id_producto, tipo, cantidad, cantidad_anterior, cantidad_nueva, nota)
+             VALUES (?, 'INGRESO', ?, 0, ?, 'Stock inicial')`,
+            [prod.id, cantidad, cantidad]
+          );
+        }
+        okBox.textContent = `✓ Producto "${nombre}" agregado exitosamente.`;
+        okBox.style.display = 'block';
+        // Limpiar formulario
+        document.getElementById('name').value     = '';
+        document.getElementById('code').value     = '';
+        document.getElementById('quantity').value = '0';
+        document.getElementById('minStock').value = '0';
+        document.getElementById('category').value = '';
+      } catch(e) {
+        errBox.textContent = 'Error al guardar: ' + e.message;
+        errBox.style.display = 'block';
+      }
     });
+
+    init();
   </script>
 </body>
 </html>

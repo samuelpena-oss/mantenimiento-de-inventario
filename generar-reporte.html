@@ -5,60 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Generar Reporte - Inventario</title>
   <link rel="stylesheet" href="Styles/Style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+  <script src="db.js"></script>
 </head>
 <body>
   <header>
     <h1>Generar Reporte</h1>
-    <p>Reporte resumen del inventario actual.</p>
+    <p>Reporte resumen del inventario actual con historial de movimientos.</p>
   </header>
 
   <main class="container">
     <section class="card">
-      <h2>Estadísticas del Inventario</h2>
-      <div id="reportContent">
-        <!-- Reporte se cargará aquí -->
+      <h2 style="margin-top:0;">Estadísticas del Inventario</h2>
+      <div id="reportContent"></div>
+
+      <h2 style="margin-top:2rem;">Últimos Movimientos</h2>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+          <thead>
+            <tr style="border-bottom:2px solid #e2e8f0;background:#f7faff;">
+              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Fecha</th>
+              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Producto</th>
+              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Código</th>
+              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Tipo</th>
+              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Cantidad</th>
+              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Anterior</th>
+              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Nueva</th>
+              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Nota</th>
+            </tr>
+          </thead>
+          <tbody id="movTable"></tbody>
+        </table>
+        <p id="noMov" style="display:none;color:#6b7280;text-align:center;padding:1.5rem;">Sin movimientos registrados.</p>
       </div>
-      <div class="actions" style="margin-top: 1rem;">
-        <button class="btn primary" onclick="printReport()">Imprimir Reporte</button>
-        <a href="index.html" class="btn secondary" style="text-decoration: none; color: inherit;">Volver</a>
+
+      <div class="actions" style="margin-top:1.5rem;">
+        <button class="btn primary" onclick="window.print()">Imprimir Reporte</button>
+        <a href="index.html" class="btn secondary" style="text-decoration:none;color:inherit;">Volver</a>
       </div>
     </section>
   </main>
 
   <script>
-    function loadProducts() {
-      return JSON.parse(localStorage.getItem('products')) || [];
-    }
+    async function init() {
+      const db = await DB.getDB();
 
-    function generateReport() {
-      const products = loadProducts();
-      const totalProducts = products.length;
-      const totalQuantity = products.reduce((sum, p) => sum + p.quantity, 0);
-      const lowStockProducts = products.filter(p => p.quantity <= p.minStock);
-      const lowStockCount = lowStockProducts.length;
-      const updated = new Date().toLocaleString();
+      // ── Resumen ──
+      const [rep] = DB.query(db, `
+        SELECT COUNT(*) AS total,
+               SUM(cantidad) AS unidades,
+               SUM(CASE WHEN cantidad <= stock_minimo THEN 1 ELSE 0 END) AS bajos
+        FROM productos`);
 
-      let report = `
-        <p><strong>Total de Productos:</strong> ${totalProducts}</p>
-        <p><strong>Cantidad Total en Inventario:</strong> ${totalQuantity}</p>
-        <p><strong>Productos con Stock Bajo:</strong> ${lowStockCount}</p>
-        <p><strong>Última Actualización:</strong> ${updated}</p>
-        <h3>Productos con Stock Bajo:</h3>
-        <ul>
+      const bajos = DB.query(db, `
+        SELECT p.nombre, p.codigo, p.cantidad, p.stock_minimo
+        FROM productos p WHERE p.cantidad <= p.stock_minimo ORDER BY p.nombre`);
+
+      document.getElementById('reportContent').innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem;">
+          <div style="padding:1rem;border-radius:12px;background:rgba(47,128,237,0.08);border:1px solid rgba(47,128,237,0.18);">
+            <div style="font-size:1.8rem;font-weight:700;">${rep.total ?? 0}</div>
+            <div style="color:#6b7280;font-size:0.85rem;">Total de productos</div>
+          </div>
+          <div style="padding:1rem;border-radius:12px;background:rgba(47,128,237,0.08);border:1px solid rgba(47,128,237,0.18);">
+            <div style="font-size:1.8rem;font-weight:700;">${rep.unidades ?? 0}</div>
+            <div style="color:#6b7280;font-size:0.85rem;">Unidades totales</div>
+          </div>
+          <div style="padding:1rem;border-radius:12px;background:${bajos.length?'rgba(229,62,62,0.08)':'rgba(56,161,105,0.08)'};border:1px solid ${bajos.length?'rgba(229,62,62,0.2)':'rgba(56,161,105,0.2)'};">
+            <div style="font-size:1.8rem;font-weight:700;color:${bajos.length?'#e53e3e':'#38a169'};">${bajos.length}</div>
+            <div style="color:#6b7280;font-size:0.85rem;">Productos bajo mínimo</div>
+          </div>
+        </div>
+        ${bajos.length ? `
+        <h3 style="color:#e53e3e;font-size:0.95rem;margin-bottom:0.5rem;">⚠ Productos con Stock Bajo</h3>
+        <ul style="margin:0;padding-left:1.2rem;color:#e53e3e;">
+          ${bajos.map(b => `<li>${b.nombre} (${b.codigo}) — Cantidad: ${b.cantidad} / Mínimo: ${b.stock_minimo}</li>`).join('')}
+        </ul>` : '<p style="color:#38a169;">✓ Todo el inventario está sobre el nivel mínimo.</p>'}
+        <p style="color:#6b7280;font-size:0.8rem;margin-top:1rem;">Generado: ${new Date().toLocaleString('es-CO')}</p>
       `;
-      lowStockProducts.forEach(p => {
-        report += `<li>${p.name} (Código: ${p.code}) - Cantidad: ${p.quantity} / Mínimo: ${p.minStock}</li>`;
-      });
-      report += '</ul>';
 
-      document.getElementById('reportContent').innerHTML = report;
+      // ── Movimientos ──
+      const movs = DB.query(db, `
+        SELECT m.fecha, p.nombre AS producto, p.codigo, m.tipo,
+               m.cantidad, m.cantidad_anterior, m.cantidad_nueva, m.nota
+        FROM movimientos m
+        JOIN productos p ON p.id = m.id_producto
+        ORDER BY m.fecha DESC LIMIT 50`);
+
+      const noMov = document.getElementById('noMov');
+      const tbody = document.getElementById('movTable');
+      if (!movs.length) { noMov.style.display = 'block'; return; }
+      tbody.innerHTML = movs.map(m => `
+        <tr style="border-bottom:1px solid #eee;">
+          <td style="padding:0.45rem;font-size:0.8rem;">${m.fecha ? m.fecha.slice(0,16).replace('T',' ') : '—'}</td>
+          <td style="padding:0.45rem;">${m.producto}</td>
+          <td style="padding:0.45rem;font-family:monospace;">${m.codigo}</td>
+          <td style="padding:0.45rem;">
+            <span style="padding:0.15rem 0.5rem;border-radius:999px;font-size:0.78rem;font-weight:600;
+              background:${m.tipo==='INGRESO'?'#f0fff4':'#fff5f5'};
+              color:${m.tipo==='INGRESO'?'#38a169':'#e53e3e'};">${m.tipo}</span>
+          </td>
+          <td style="padding:0.45rem;font-weight:600;">${m.cantidad}</td>
+          <td style="padding:0.45rem;">${m.cantidad_anterior}</td>
+          <td style="padding:0.45rem;">${m.cantidad_nueva}</td>
+          <td style="padding:0.45rem;color:#6b7280;">${m.nota ?? ''}</td>
+        </tr>`).join('');
     }
-
-    function printReport() {
-      window.print();
-    }
-
-    generateReport();
+    init();
   </script>
 </body>
 </html>

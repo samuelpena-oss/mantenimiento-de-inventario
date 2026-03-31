@@ -4,87 +4,89 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Inventario - Inicio</title>
-<link rel="stylesheet" href="Styles/Style.css"> 
+  <link rel="stylesheet" href="Styles/Style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+  <script src="db.js"></script>
 </head>
 <body>
   <header>
     <h1>Inventario - Panel de inicio</h1>
-    <p>
-      Controla tu stock con rapidez: agrega productos, revisa niveles y genera
-      reportes desde una sola pantalla.
-    </p>
+    <p>Controla tu stock con rapidez: agrega productos, revisa niveles y genera reportes desde una sola pantalla.</p>
   </header>
 
   <main class="container">
     <section class="card">
       <div class="search-box">
-        <input
-          id="searchInput"
-          type="search"
-          placeholder="Buscar producto, categoría o código..."
-          aria-label="Buscar inventario"
-        />
+        <input id="searchInput" type="search" placeholder="Buscar producto, categoría o código..." aria-label="Buscar inventario" />
       </div>
-
+      <div id="searchResults" style="display:none; margin-bottom:1rem;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+          <thead>
+            <tr style="border-bottom:1px solid #ccc;">
+              <th style="text-align:left;padding:0.4rem;">Nombre</th>
+              <th style="text-align:left;padding:0.4rem;">Categoría</th>
+              <th style="text-align:left;padding:0.4rem;">Código</th>
+              <th style="text-align:left;padding:0.4rem;">Cantidad</th>
+              <th style="text-align:left;padding:0.4rem;">Estado</th>
+            </tr>
+          </thead>
+          <tbody id="searchBody"></tbody>
+        </table>
+      </div>
       <div class="actions">
-        <button class="btn primary" id="btnAdd">Agregar producto</button>
-        <button class="btn secondary" id="btnEgress">Egresar producto</button>
-        <button class="btn secondary" id="btnList">Ver inventario</button>
-        <button class="btn secondary" id="btnReport">Generar reporte</button>
+        <button class="btn primary"   onclick="location.href='agregar-producto.html'">Agregar producto</button>
+        <button class="btn secondary" onclick="location.href='egreso-producto.html'">Egresar producto</button>
+        <button class="btn secondary" onclick="location.href='ver-inventario.html'">Ver inventario</button>
+        <button class="btn secondary" onclick="location.href='generar-reporte.html'">Generar reporte</button>
       </div>
     </section>
 
     <section class="stats">
-      <div class="stat">
-        <small>Total de productos</small>
-        <span id="statTotal">--</span>
-      </div>
-      <div class="stat">
-        <small>Productos bajo mínimo</small>
-        <span id="statLowStock">--</span>
-      </div>
-      <div class="stat">
-        <small>Última actualización</small>
-        <span id="statUpdated">--</span>
-      </div>
+      <div class="stat"><small>Total de productos</small><span id="statTotal">…</span></div>
+      <div class="stat"><small>Unidades en stock</small><span id="statUnits">…</span></div>
+      <div class="stat"><small>Productos bajo mínimo</small><span id="statLowStock">…</span></div>
     </section>
   </main>
 
   <script>
-    // Cargar productos desde localStorage
-    function loadProducts() {
-      const products = JSON.parse(localStorage.getItem('products')) || [];
-      return products;
+    let db;
+    async function init() {
+      db = await DB.getDB();
+      updateStats();
     }
-
-    // Calcular estadísticas
     function updateStats() {
-      const products = loadProducts();
-      const total = products.length;
-      const lowStock = products.filter(p => p.quantity <= p.minStock).length;
-      const updated = new Date().toLocaleString();
-
-      document.getElementById("statTotal").textContent = total;
-      document.getElementById("statLowStock").textContent = lowStock;
-      document.getElementById("statUpdated").textContent = updated;
+      const [rep] = DB.query(db, `
+        SELECT COUNT(*) AS total,
+               SUM(cantidad) AS unidades,
+               SUM(CASE WHEN cantidad <= stock_minimo THEN 1 ELSE 0 END) AS bajos
+        FROM productos`);
+      document.getElementById('statTotal').textContent    = rep.total    ?? 0;
+      document.getElementById('statUnits').textContent    = rep.unidades ?? 0;
+      document.getElementById('statLowStock').textContent = rep.bajos    ?? 0;
     }
-
-    // Inicializar
-    updateStats();
-
-    // Navegar a páginas
-    document.getElementById("btnAdd").onclick = () => {
-      window.location.href = 'agregar-producto.html';
-    };
-    document.getElementById("btnEgress").onclick = () => {
-      window.location.href = 'egreso-producto.html';
-    };
-    document.getElementById("btnList").onclick = () => {
-      window.location.href = 'ver-inventario.html';
-    };
-    document.getElementById("btnReport").onclick = () => {
-      window.location.href = 'generar-reporte.html';
-    };
+    document.getElementById('searchInput').addEventListener('input', function () {
+      const term = this.value.trim();
+      const box  = document.getElementById('searchResults');
+      const body = document.getElementById('searchBody');
+      if (!term || !db) { box.style.display = 'none'; return; }
+      const like = '%' + term + '%';
+      const rows = DB.query(db, `
+        SELECT p.nombre, c.nombre AS categoria, p.codigo, p.cantidad,
+               CASE WHEN p.cantidad <= p.stock_minimo THEN 'Bajo Stock' ELSE 'Normal' END AS estado
+        FROM productos p JOIN categorias c ON c.id = p.id_categoria
+        WHERE p.nombre LIKE ? OR c.nombre LIKE ? OR p.codigo LIKE ?
+        ORDER BY p.nombre LIMIT 20`, [like, like, like]);
+      body.innerHTML = rows.map(r => `
+        <tr style="border-bottom:1px solid #eee;">
+          <td style="padding:0.4rem;">${r.nombre}</td>
+          <td style="padding:0.4rem;">${r.categoria}</td>
+          <td style="padding:0.4rem;">${r.codigo}</td>
+          <td style="padding:0.4rem;">${r.cantidad}</td>
+          <td style="padding:0.4rem;color:${r.estado==='Bajo Stock'?'#e53e3e':'#38a169'};">${r.estado}</td>
+        </tr>`).join('');
+      box.style.display = rows.length ? 'block' : 'none';
+    });
+    init();
   </script>
 </body>
 </html>

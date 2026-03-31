@@ -5,96 +5,155 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ver Inventario - Inventario</title>
   <link rel="stylesheet" href="Styles/Style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+  <script src="db.js"></script>
 </head>
 <body>
   <header>
     <h1>Ver Inventario</h1>
-    <p>Lista completa de productos en el inventario.</p>
+    <p>Lista completa de productos con estado de stock en tiempo real.</p>
   </header>
 
   <main class="container">
     <section class="card">
-      <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-          <tr style="border-bottom: 1px solid #ccc;">
-            <th style="text-align: left; padding: 0.5rem;"><input type="checkbox" id="selectAll"></th>
-            <th style="text-align: left; padding: 0.5rem;">Nombre</th>
-            <th style="text-align: left; padding: 0.5rem;">Categoría</th>
-            <th style="text-align: left; padding: 0.5rem;">Código</th>
-            <th style="text-align: left; padding: 0.5rem;">Cantidad</th>
-            <th style="text-align: left; padding: 0.5rem;">Stock Mínimo</th>
-            <th style="text-align: left; padding: 0.5rem;">Estado</th>
-            <th style="text-align: left; padding: 0.5rem;">Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="inventoryTable">
-          <!-- Productos se cargarán aquí -->
-        </tbody>
-      </table>
-      <div class="actions" style="margin-top: 1rem;">
-        <button class="btn secondary" onclick="deleteSelectedProducts()">Eliminar seleccionados</button>
-        <a href="index.html" class="btn secondary" style="text-decoration: none; color: inherit;">Volver</a>
+      <!-- Filtros -->
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center;">
+        <input id="filterSearch" type="search" placeholder="Buscar…"
+          style="flex:1;min-width:160px;padding:0.6rem 0.9rem;border:1px solid #ccc;border-radius:999px;font-size:0.9rem;">
+        <select id="filterCateg" style="padding:0.6rem;border:1px solid #ccc;border-radius:999px;font-size:0.9rem;">
+          <option value="">Todas las categorías</option>
+        </select>
+        <select id="filterStatus" style="padding:0.6rem;border:1px solid #ccc;border-radius:999px;font-size:0.9rem;">
+          <option value="">Todos los estados</option>
+          <option value="bajo">Bajo Stock</option>
+          <option value="normal">Normal</option>
+        </select>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:2px solid #e2e8f0;background:#f7faff;">
+              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;"><input type="checkbox" id="selectAll"></th>
+              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Nombre</th>
+              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Categoría</th>
+              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Código</th>
+              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Cantidad</th>
+              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Mínimo</th>
+              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Estado</th>
+              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryTable"></tbody>
+        </table>
+      </div>
+      <p id="emptyMsg" style="display:none;color:#6b7280;text-align:center;padding:2rem;">No se encontraron productos.</p>
+
+      <div class="actions" style="margin-top:1rem;">
+        <button class="btn secondary" onclick="deleteSelected()">Eliminar seleccionados</button>
+        <a href="index.html" class="btn secondary" style="text-decoration:none;color:inherit;">Volver</a>
       </div>
     </section>
   </main>
 
   <script>
-    function loadProducts() {
-      return JSON.parse(localStorage.getItem('products')) || [];
-    }
+    let db, allProducts = [];
 
-    function renderInventory() {
-      const products = loadProducts();
-      const tbody = document.getElementById('inventoryTable');
-      tbody.innerHTML = '';
-      products.forEach((product, index) => {
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #eee';
-        const status = product.quantity <= product.minStock ? 'Bajo Stock' : 'Normal';
-        const statusColor = product.quantity <= product.minStock ? 'red' : 'green';
-        row.innerHTML = `
-          <td style="padding: 0.5rem;"><input type="checkbox" class="product-checkbox" data-index="${index}"></td>
-          <td style="padding: 0.5rem;">${product.name}</td>
-          <td style="padding: 0.5rem;">${product.category}</td>
-          <td style="padding: 0.5rem;">${product.code}</td>
-          <td style="padding: 0.5rem;">${product.quantity}</td>
-          <td style="padding: 0.5rem;">${product.minStock}</td>
-          <td style="padding: 0.5rem; color: ${statusColor};">${status}</td>
-          <td style="padding: 0.5rem;"><button class="btn secondary" onclick="deleteProduct(${index})">Eliminar</button></td>
-        `;
-        tbody.appendChild(row);
+    async function init() {
+      db = await DB.getDB();
+      // Categorías para el filtro
+      const cats = DB.query(db, 'SELECT id, nombre FROM categorias ORDER BY nombre');
+      const sel = document.getElementById('filterCateg');
+      cats.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id; opt.textContent = c.nombre; sel.appendChild(opt);
       });
+      loadProducts();
     }
 
-    function deleteProduct(index) {
-      const products = loadProducts();
-      products.splice(index, 1);
-      localStorage.setItem('products', JSON.stringify(products));
-      renderInventory();
+    function loadProducts() {
+      allProducts = DB.query(db, `
+        SELECT p.id, p.nombre, c.nombre AS categoria, p.codigo,
+               p.cantidad, p.stock_minimo,
+               CASE WHEN p.cantidad <= p.stock_minimo THEN 'Bajo Stock' ELSE 'Normal' END AS estado,
+               p.actualizado
+        FROM productos p JOIN categorias c ON c.id = p.id_categoria
+        ORDER BY p.nombre`);
+      applyFilters();
     }
 
-    function deleteSelectedProducts() {
-      const checkboxes = document.querySelectorAll('.product-checkbox:checked');
-      if (checkboxes.length === 0) {
-        alert('Selecciona al menos un producto para eliminar.');
-        return;
-      }
-      const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index)).sort((a, b) => b - a);
-      const products = loadProducts();
-      indices.forEach(index => products.splice(index, 1));
-      localStorage.setItem('products', JSON.stringify(products));
-      renderInventory();
+    function applyFilters() {
+      const search = document.getElementById('filterSearch').value.toLowerCase();
+      const categId = document.getElementById('filterCateg').value;
+      const status  = document.getElementById('filterStatus').value;
+      const cats    = DB.query(db, 'SELECT id, nombre FROM categorias');
+      const categMap = Object.fromEntries(cats.map(c => [c.nombre, c.id]));
+
+      let filtered = allProducts.filter(p => {
+        const matchSearch = !search ||
+          p.nombre.toLowerCase().includes(search) ||
+          p.categoria.toLowerCase().includes(search) ||
+          p.codigo.toLowerCase().includes(search);
+        const matchCateg  = !categId || String(categMap[p.categoria]) === String(categId);
+        const matchStatus = !status ||
+          (status === 'bajo' && p.estado === 'Bajo Stock') ||
+          (status === 'normal' && p.estado === 'Normal');
+        return matchSearch && matchCateg && matchStatus;
+      });
+      renderTable(filtered);
     }
 
-    function toggleSelectAll() {
-      const selectAll = document.getElementById('selectAll');
-      const checkboxes = document.querySelectorAll('.product-checkbox');
-      checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    function renderTable(products) {
+      const tbody = document.getElementById('inventoryTable');
+      const empty = document.getElementById('emptyMsg');
+      if (!products.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      tbody.innerHTML = products.map(p => `
+        <tr style="border-bottom:1px solid #eee;" data-id="${p.id}">
+          <td style="padding:0.5rem;"><input type="checkbox" class="cb" data-id="${p.id}"></td>
+          <td style="padding:0.5rem;">${p.nombre}</td>
+          <td style="padding:0.5rem;">${p.categoria}</td>
+          <td style="padding:0.5rem;font-family:monospace;">${p.codigo}</td>
+          <td style="padding:0.5rem;font-weight:600;">${p.cantidad}</td>
+          <td style="padding:0.5rem;">${p.stock_minimo}</td>
+          <td style="padding:0.5rem;">
+            <span style="padding:0.2rem 0.6rem;border-radius:999px;font-size:0.8rem;font-weight:600;
+              background:${p.estado==='Bajo Stock'?'#fff5f5':'#f0fff4'};
+              color:${p.estado==='Bajo Stock'?'#e53e3e':'#38a169'};">${p.estado}</span>
+          </td>
+          <td style="padding:0.5rem;">
+            <button class="btn secondary" style="font-size:0.8rem;padding:0.35rem 0.7rem;"
+              onclick="deleteOne(${p.id}, '${p.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
+          </td>
+        </tr>`).join('');
     }
 
-    document.getElementById('selectAll').addEventListener('change', toggleSelectAll);
+    function deleteOne(id, nombre) {
+      if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+      DB.run(db, 'DELETE FROM movimientos WHERE id_producto = ?', [id]);
+      DB.run(db, 'DELETE FROM productos WHERE id = ?', [id]);
+      loadProducts();
+    }
 
-    renderInventory();
+    function deleteSelected() {
+      const ids = Array.from(document.querySelectorAll('.cb:checked')).map(cb => parseInt(cb.dataset.id));
+      if (!ids.length) { alert('Selecciona al menos un producto.'); return; }
+      if (!confirm(`¿Eliminar ${ids.length} producto(s)? Esta acción no se puede deshacer.`)) return;
+      ids.forEach(id => {
+        DB.run(db, 'DELETE FROM movimientos WHERE id_producto = ?', [id]);
+        DB.run(db, 'DELETE FROM productos WHERE id = ?', [id]);
+      });
+      loadProducts();
+    }
+
+    document.getElementById('selectAll').addEventListener('change', function () {
+      document.querySelectorAll('.cb').forEach(cb => cb.checked = this.checked);
+    });
+
+    ['filterSearch','filterCateg','filterStatus'].forEach(id =>
+      document.getElementById(id).addEventListener('input', applyFilters));
+
+    init();
   </script>
 </body>
 </html>

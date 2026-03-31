@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Egreso de Producto - Inventario</title>
   <link rel="stylesheet" href="Styles/Style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+  <script src="db.js"></script>
 </head>
 <body>
   <header>
@@ -14,67 +16,94 @@
 
   <main class="container">
     <section class="card">
-      <form id="egressProductForm">
-        <div style="margin-bottom: 1rem;">
-          <label for="productSelect">Seleccionar Producto:</label>
-          <select id="productSelect" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
-            <option value="">-- Seleccionar --</option>
-          </select>
-        </div>
-        <div style="margin-bottom: 1rem;">
-          <label for="egressQuantity">Cantidad a Egresar:</label>
-          <input type="number" id="egressQuantity" min="1" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
-        </div>
-        <div class="actions">
-          <button type="submit" class="btn primary">Egresar Producto</button>
-          <a href="index.html" class="btn secondary" style="text-decoration: none; color: inherit;">Volver</a>
-        </div>
-      </form>
+      <div id="errorMsg"   style="display:none;color:#e53e3e;margin-bottom:1rem;padding:0.75rem;background:#fff5f5;border-radius:8px;border:1px solid #fed7d7;"></div>
+      <div id="successMsg" style="display:none;color:#38a169;margin-bottom:1rem;padding:0.75rem;background:#f0fff4;border-radius:8px;border:1px solid #c6f6d5;"></div>
+
+      <div style="margin-bottom:1rem;">
+        <label for="productSelect">Seleccionar Producto:</label>
+        <select id="productSelect" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
+          <option value="">-- Seleccionar --</option>
+        </select>
+      </div>
+      <div id="stockInfo" style="display:none;margin-bottom:1rem;padding:0.6rem 1rem;background:rgba(47,128,237,0.08);border-radius:8px;font-size:0.9rem;color:#2f80ed;"></div>
+      <div style="margin-bottom:1rem;">
+        <label for="egressQuantity">Cantidad a Egresar:</label>
+        <input type="number" id="egressQuantity" min="1" value="1" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
+      </div>
+      <div style="margin-bottom:1.5rem;">
+        <label for="nota">Nota (opcional):</label>
+        <input type="text" id="nota" placeholder="Motivo del egreso..." style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="btnEgresar">Egresar Producto</button>
+        <a href="index.html" class="btn secondary" style="text-decoration:none;color:inherit;">Volver</a>
+      </div>
     </section>
   </main>
 
   <script>
-    function loadProducts() {
-      return JSON.parse(localStorage.getItem('products')) || [];
-    }
-
-    function saveProducts(products) {
-      localStorage.setItem('products', JSON.stringify(products));
-    }
-
-    function populateProductSelect() {
-      const products = loadProducts();
-      const select = document.getElementById('productSelect');
-      products.forEach(product => {
-        const option = document.createElement('option');
-        option.value = product.id;
-        option.textContent = `${product.name} (Código: ${product.code}) - Disponible: ${product.quantity}`;
-        select.appendChild(option);
+    let db;
+    async function init() {
+      db = await DB.getDB();
+      const products = DB.query(db,
+        `SELECT p.id, p.nombre, p.codigo, p.cantidad
+         FROM productos p ORDER BY p.nombre`);
+      const sel = document.getElementById('productSelect');
+      products.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.dataset.cantidad = p.cantidad;
+        opt.textContent = `${p.nombre} (${p.codigo}) — Disponible: ${p.cantidad}`;
+        sel.appendChild(opt);
       });
     }
 
-    document.getElementById('egressProductForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const productId = parseInt(document.getElementById('productSelect').value);
-      const egressQty = parseInt(document.getElementById('egressQuantity').value);
-
-      const products = loadProducts();
-      const product = products.find(p => p.id === productId);
-      if (!product) {
-        alert('Producto no encontrado.');
-        return;
-      }
-      if (egressQty > product.quantity) {
-        alert('Cantidad a egresar supera la disponible.');
-        return;
-      }
-      product.quantity -= egressQty;
-      saveProducts(products);
-      alert('Egreso realizado exitosamente.');
-      window.location.href = 'index.html';
+    document.getElementById('productSelect').addEventListener('change', function () {
+      const opt = this.options[this.selectedIndex];
+      const info = document.getElementById('stockInfo');
+      if (!this.value) { info.style.display = 'none'; return; }
+      info.textContent = `Stock actual: ${opt.dataset.cantidad} unidades`;
+      info.style.display = 'block';
     });
 
-    populateProductSelect();
+    document.getElementById('btnEgresar').addEventListener('click', function () {
+      const sel      = document.getElementById('productSelect');
+      const prodId   = parseInt(sel.value);
+      const qty      = parseInt(document.getElementById('egressQuantity').value);
+      const nota     = document.getElementById('nota').value.trim();
+      const errBox   = document.getElementById('errorMsg');
+      const okBox    = document.getElementById('successMsg');
+      errBox.style.display = 'none';
+      okBox.style.display  = 'none';
+
+      if (!prodId) {
+        errBox.textContent = 'Selecciona un producto.';
+        errBox.style.display = 'block'; return;
+      }
+      const [prod] = DB.query(db, 'SELECT * FROM productos WHERE id = ?', [prodId]);
+      if (qty > prod.cantidad) {
+        errBox.textContent = `Stock insuficiente. Disponible: ${prod.cantidad} unidades.`;
+        errBox.style.display = 'block'; return;
+      }
+      const nueva = prod.cantidad - qty;
+      DB.run(db, `UPDATE productos SET cantidad = ?, actualizado = datetime('now') WHERE id = ?`, [nueva, prodId]);
+      DB.run(db,
+        `INSERT INTO movimientos (id_producto, tipo, cantidad, cantidad_anterior, cantidad_nueva, nota)
+         VALUES (?, 'EGRESO', ?, ?, ?, ?)`,
+        [prodId, qty, prod.cantidad, nueva, nota || null]
+      );
+      // Actualizar el select
+      sel.options[sel.selectedIndex].dataset.cantidad = nueva;
+      sel.options[sel.selectedIndex].textContent =
+        sel.options[sel.selectedIndex].textContent.replace(/Disponible: \d+/, `Disponible: ${nueva}`);
+      document.getElementById('stockInfo').textContent = `Stock actual: ${nueva} unidades`;
+      okBox.textContent = `✓ Egreso de ${qty} unidad(es) registrado correctamente.`;
+      okBox.style.display = 'block';
+      document.getElementById('egressQuantity').value = '1';
+      document.getElementById('nota').value = '';
+    });
+
+    init();
   </script>
 </body>
 </html>
