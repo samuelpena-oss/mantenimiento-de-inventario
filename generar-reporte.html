@@ -9,109 +9,171 @@
   <script src="db.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Generar Reporte</h1>
-    <p>Reporte resumen del inventario actual con historial de movimientos.</p>
-  </header>
 
-  <main class="container">
-    <section class="card">
-      <h2 style="margin-top:0;">Estadísticas del Inventario</h2>
-      <div id="reportContent"></div>
+<div id="loading"><div class="spinner"></div><span>Cargando base de datos…</span></div>
 
-      <h2 style="margin-top:2rem;">Últimos Movimientos</h2>
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
-          <thead>
-            <tr style="border-bottom:2px solid #e2e8f0;background:#f7faff;">
-              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Fecha</th>
-              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Producto</th>
-              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Código</th>
-              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Tipo</th>
-              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Cantidad</th>
-              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Anterior</th>
-              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Nueva</th>
-              <th style="text-align:left;padding:0.5rem;color:#6b7280;">Nota</th>
-            </tr>
-          </thead>
-          <tbody id="movTable"></tbody>
-        </table>
-        <p id="noMov" style="display:none;color:#6b7280;text-align:center;padding:1.5rem;">Sin movimientos registrados.</p>
-      </div>
+<div id="app" style="display:none;">
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">📦</div>
+      <h2>Inventario</h2>
+      <p>Sistema de control de stock</p>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <div class="nav-item" onclick="location.href='index.html'"><span class="nav-icon">🏠</span> Inicio</div>
+      <div class="nav-item" onclick="location.href='ver-inventario.html'"><span class="nav-icon">📋</span> Ver Inventario</div>
+      <div class="nav-section-label" style="margin-top:0.5rem;">Movimientos</div>
+      <div class="nav-item" onclick="location.href='agregar-producto.html'"><span class="nav-icon">➕</span> Agregar Producto</div>
+      <div class="nav-item" onclick="location.href='ingreso-producto.html'"><span class="nav-icon">📥</span> Registrar Ingreso</div>
+      <div class="nav-item" onclick="location.href='egreso-producto.html'"><span class="nav-icon">📤</span> Registrar Egreso</div>
+      <div class="nav-section-label" style="margin-top:0.5rem;">Reportes</div>
+      <div class="nav-item active" onclick="location.href='generar-reporte.html'"><span class="nav-icon">📊</span> Generar Reporte</div>
+      <div class="nav-item" onclick="location.href='historial.html'"><span class="nav-icon">🕒</span> Historial</div>
+    </div>
+    <div class="sidebar-footer">inventario1 · SQL.js + localStorage</div>
+  </nav>
 
-      <div class="actions" style="margin-top:1.5rem;">
-        <button class="btn primary" onclick="window.print()">Imprimir Reporte</button>
-        <a href="index.html" class="btn secondary" style="text-decoration:none;color:inherit;">Volver</a>
-      </div>
-    </section>
-  </main>
+  <div id="main">
+    <div id="topbar">
+      <h1>Generar Reporte</h1>
+      <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨 Imprimir</button>
+    </div>
 
-  <script>
-    async function init() {
-      const db = await DB.getDB();
+    <div class="page active">
 
-      // ── Resumen ──
-      const [rep] = DB.query(db, `
-        SELECT COUNT(*) AS total,
-               SUM(cantidad) AS unidades,
-               SUM(CASE WHEN cantidad <= stock_minimo THEN 1 ELSE 0 END) AS bajos
-        FROM productos`);
-
-      const bajos = DB.query(db, `
-        SELECT p.nombre, p.codigo, p.cantidad, p.stock_minimo
-        FROM productos p WHERE p.cantidad <= p.stock_minimo ORDER BY p.nombre`);
-
-      document.getElementById('reportContent').innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem;">
-          <div style="padding:1rem;border-radius:12px;background:rgba(47,128,237,0.08);border:1px solid rgba(47,128,237,0.18);">
-            <div style="font-size:1.8rem;font-weight:700;">${rep.total ?? 0}</div>
-            <div style="color:#6b7280;font-size:0.85rem;">Total de productos</div>
-          </div>
-          <div style="padding:1rem;border-radius:12px;background:rgba(47,128,237,0.08);border:1px solid rgba(47,128,237,0.18);">
-            <div style="font-size:1.8rem;font-weight:700;">${rep.unidades ?? 0}</div>
-            <div style="color:#6b7280;font-size:0.85rem;">Unidades totales</div>
-          </div>
-          <div style="padding:1rem;border-radius:12px;background:${bajos.length?'rgba(229,62,62,0.08)':'rgba(56,161,105,0.08)'};border:1px solid ${bajos.length?'rgba(229,62,62,0.2)':'rgba(56,161,105,0.2)'};">
-            <div style="font-size:1.8rem;font-weight:700;color:${bajos.length?'#e53e3e':'#38a169'};">${bajos.length}</div>
-            <div style="color:#6b7280;font-size:0.85rem;">Productos bajo mínimo</div>
+      <!-- Estadísticas generales -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Reporte de Inventario</div>
+            <div class="card-subtitle" id="reportDate"></div>
           </div>
         </div>
-        ${bajos.length ? `
-        <h3 style="color:#e53e3e;font-size:0.95rem;margin-bottom:0.5rem;">⚠ Productos con Stock Bajo</h3>
-        <ul style="margin:0;padding-left:1.2rem;color:#e53e3e;">
-          ${bajos.map(b => `<li>${b.nombre} (${b.codigo}) — Cantidad: ${b.cantidad} / Mínimo: ${b.stock_minimo}</li>`).join('')}
-        </ul>` : '<p style="color:#38a169;">✓ Todo el inventario está sobre el nivel mínimo.</p>'}
-        <p style="color:#6b7280;font-size:0.8rem;margin-top:1rem;">Generado: ${new Date().toLocaleString('es-CO')}</p>
-      `;
+        <div id="report-stats" class="report-stats"></div>
+        <div id="report-bajo"></div>
+      </div>
 
-      // ── Movimientos ──
-      const movs = DB.query(db, `
-        SELECT m.fecha, p.nombre AS producto, p.codigo, m.tipo,
-               m.cantidad, m.cantidad_anterior, m.cantidad_nueva, m.nota
-        FROM movimientos m
-        JOIN productos p ON p.id = m.id_producto
-        ORDER BY m.fecha DESC LIMIT 50`);
+      <!-- Resumen por categoría -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Resumen por Categoría</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Categoría</th><th>Productos</th><th>Unidades</th><th>Bajo Stock</th>
+            </tr></thead>
+            <tbody id="report-cats"></tbody>
+          </table>
+        </div>
+      </div>
 
-      const noMov = document.getElementById('noMov');
-      const tbody = document.getElementById('movTable');
-      if (!movs.length) { noMov.style.display = 'block'; return; }
-      tbody.innerHTML = movs.map(m => `
-        <tr style="border-bottom:1px solid #eee;">
-          <td style="padding:0.45rem;font-size:0.8rem;">${m.fecha ? m.fecha.slice(0,16).replace('T',' ') : '—'}</td>
-          <td style="padding:0.45rem;">${m.producto}</td>
-          <td style="padding:0.45rem;font-family:monospace;">${m.codigo}</td>
-          <td style="padding:0.45rem;">
-            <span style="padding:0.15rem 0.5rem;border-radius:999px;font-size:0.78rem;font-weight:600;
-              background:${m.tipo==='INGRESO'?'#f0fff4':'#fff5f5'};
-              color:${m.tipo==='INGRESO'?'#38a169':'#e53e3e'};">${m.tipo}</span>
-          </td>
-          <td style="padding:0.45rem;font-weight:600;">${m.cantidad}</td>
-          <td style="padding:0.45rem;">${m.cantidad_anterior}</td>
-          <td style="padding:0.45rem;">${m.cantidad_nueva}</td>
-          <td style="padding:0.45rem;color:#6b7280;">${m.nota ?? ''}</td>
-        </tr>`).join('');
+      <!-- Últimos movimientos -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Últimos Movimientos</div>
+          <div class="card-subtitle">Los 50 movimientos más recientes</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Fecha</th><th>Producto</th><th>Código</th><th>Tipo</th>
+              <th>Cantidad</th><th>Anterior</th><th>Nueva</th><th>Nota</th>
+            </tr></thead>
+            <tbody id="movTable"></tbody>
+          </table>
+          <p id="noMov" class="empty-state" style="display:none;">
+            <span class="empty-icon">📭</span> Sin movimientos registrados.
+          </p>
+        </div>
+      </div>
+
+      <div style="margin-bottom:2rem;">
+        <a href="index.html" class="btn btn-secondary">← Volver</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  async function init() {
+    await DB.getDB();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display     = 'flex';
+    document.getElementById('reportDate').textContent =
+      'Generado: ' + new Date().toLocaleString('es-CO');
+    renderStats();
+    renderCategorias();
+    renderMovimientos();
+  }
+
+  function renderStats() {
+    const [r] = DB.qry(`SELECT COUNT(*) AS total, SUM(cantidad) AS units,
+      SUM(CASE WHEN cantidad<=stock_minimo THEN 1 ELSE 0 END) AS bajos FROM productos`);
+    const bajos = DB.qry(`SELECT p.nombre,p.codigo,p.cantidad,p.stock_minimo
+      FROM productos p WHERE p.cantidad<=p.stock_minimo ORDER BY p.nombre`);
+
+    document.getElementById('report-stats').innerHTML = `
+      <div class="report-stat">
+        <div class="rs-value">${r.total ?? 0}</div>
+        <div class="rs-label">Total Productos</div>
+      </div>
+      <div class="report-stat">
+        <div class="rs-value">${r.units ?? 0}</div>
+        <div class="rs-label">Unidades en Stock</div>
+      </div>
+      <div class="report-stat">
+        <div class="rs-value" style="color:var(--${bajos.length?'danger':'success'})">${bajos.length}</div>
+        <div class="rs-label">Bajo Mínimo</div>
+      </div>`;
+
+    const bajosDiv = document.getElementById('report-bajo');
+    if (bajos.length) {
+      bajosDiv.innerHTML = `<div style="background:var(--warning-light);border:1px solid rgba(217,119,6,0.2);
+        border-radius:var(--radius-sm);padding:0.75rem 1rem;margin-top:1rem;">
+        <strong style="color:var(--warning);">⚠ Productos con Stock Bajo</strong>
+        <ul style="margin:0.5rem 0 0;padding-left:1.2rem;color:var(--warning);">
+          ${bajos.map(b=>`<li>${b.nombre} (${b.codigo}) — ${b.cantidad} / mín ${b.stock_minimo}</li>`).join('')}
+        </ul></div>`;
     }
-    init();
-  </script>
+  }
+
+  function renderCategorias() {
+    const cats = DB.qry(`SELECT c.nombre,COUNT(p.id) AS prods,SUM(p.cantidad) AS units,
+      SUM(CASE WHEN p.cantidad<=p.stock_minimo THEN 1 ELSE 0 END) AS bajos
+      FROM categorias c LEFT JOIN productos p ON p.id_categoria=c.id
+      GROUP BY c.id ORDER BY c.nombre`);
+    document.getElementById('report-cats').innerHTML = cats.map(c => `<tr>
+      <td>${c.nombre}</td><td>${c.prods ?? 0}</td><td>${c.units ?? 0}</td>
+      <td>${c.bajos
+        ? `<span class="badge-pill badge-danger">${c.bajos}</span>`
+        : `<span class="badge-pill badge-success">0</span>`}</td>
+    </tr>`).join('');
+  }
+
+  function renderMovimientos() {
+    const movs = DB.qry(`SELECT m.fecha,p.nombre AS producto,p.codigo,m.tipo,
+      m.cantidad,m.cantidad_anterior,m.cantidad_nueva,m.nota
+      FROM movimientos m JOIN productos p ON p.id=m.id_producto
+      ORDER BY m.fecha DESC LIMIT 50`);
+    const noMov = document.getElementById('noMov');
+    const tbody = document.getElementById('movTable');
+    if (!movs.length) { noMov.style.display=''; return; }
+    tbody.innerHTML = movs.map(m => `<tr>
+      <td style="font-size:0.78rem;">${m.fecha ? m.fecha.slice(0,16).replace('T',' ') : '—'}</td>
+      <td>${m.producto}</td>
+      <td class="mono">${m.codigo}</td>
+      <td><span class="badge-pill ${m.tipo==='INGRESO'?'tipo-ingreso':'tipo-egreso'}">${m.tipo}</span></td>
+      <td><strong>${m.cantidad}</strong></td>
+      <td>${m.cantidad_anterior}</td>
+      <td>${m.cantidad_nueva}</td>
+      <td style="color:var(--muted);font-size:0.82rem;">${m.nota ?? ''}</td>
+    </tr>`).join('');
+  }
+
+  init();
+</script>
 </body>
 </html>

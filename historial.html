@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Historial - Inventario</title>
+  <link rel="stylesheet" href="Styles/Style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+  <script src="db.js"></script>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div><span>Cargando base de datos…</span></div>
+
+<div id="app" style="display:none;">
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">📦</div>
+      <h2>Inventario</h2>
+      <p>Sistema de control de stock</p>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <div class="nav-item" onclick="location.href='index.html'"><span class="nav-icon">🏠</span> Inicio</div>
+      <div class="nav-item" onclick="location.href='ver-inventario.html'"><span class="nav-icon">📋</span> Ver Inventario</div>
+      <div class="nav-section-label" style="margin-top:0.5rem;">Movimientos</div>
+      <div class="nav-item" onclick="location.href='agregar-producto.html'"><span class="nav-icon">➕</span> Agregar Producto</div>
+      <div class="nav-item" onclick="location.href='ingreso-producto.html'"><span class="nav-icon">📥</span> Registrar Ingreso</div>
+      <div class="nav-item" onclick="location.href='egreso-producto.html'"><span class="nav-icon">📤</span> Registrar Egreso</div>
+      <div class="nav-section-label" style="margin-top:0.5rem;">Reportes</div>
+      <div class="nav-item" onclick="location.href='generar-reporte.html'"><span class="nav-icon">📊</span> Generar Reporte</div>
+      <div class="nav-item active" onclick="location.href='historial.html'"><span class="nav-icon">🕒</span> Historial</div>
+    </div>
+    <div class="sidebar-footer">inventario1 · SQL.js + localStorage</div>
+  </nav>
+
+  <div id="main">
+    <div id="topbar"><h1>Historial de Movimientos</h1></div>
+
+    <div class="page active">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Historial Completo</div>
+            <div class="card-subtitle">Todos los ingresos y egresos registrados</div>
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <div class="search-wrap">
+            <span class="search-ico">🔍</span>
+            <input type="search" class="search-input" id="histSearch" placeholder="Buscar producto o código…">
+          </div>
+          <select class="filter-select" id="histTipo">
+            <option value="">Todos los tipos</option>
+            <option value="INGRESO">Solo Ingresos</option>
+            <option value="EGRESO">Solo Egresos</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Fecha</th><th>Producto</th><th>Código</th><th>Tipo</th>
+              <th>Cantidad</th><th>Anterior</th><th>Nueva</th><th>Nota</th>
+            </tr></thead>
+            <tbody id="histBody"></tbody>
+          </table>
+          <div id="histEmpty" class="empty-state" style="display:none;">
+            <div class="empty-icon">📭</div>
+            <div>Sin movimientos registrados.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:1rem;">
+          <a href="index.html" class="btn btn-secondary">← Volver</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let allMovs = [];
+
+  async function init() {
+    await DB.getDB();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display     = 'flex';
+    loadHistorial();
+  }
+
+  function loadHistorial() {
+    allMovs = DB.qry(`SELECT m.fecha,p.nombre AS producto,p.codigo,m.tipo,
+      m.cantidad,m.cantidad_anterior,m.cantidad_nueva,m.nota
+      FROM movimientos m JOIN productos p ON p.id=m.id_producto
+      ORDER BY m.fecha DESC LIMIT 200`);
+    renderHistorial(allMovs);
+  }
+
+  function renderHistorial(rows) {
+    const tbody = document.getElementById('histBody');
+    const empty = document.getElementById('histEmpty');
+    if (!rows.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+    empty.style.display = 'none';
+    tbody.innerHTML = rows.map(m => `<tr>
+      <td style="font-size:0.78rem;">${m.fecha ? m.fecha.slice(0,16).replace('T',' ') : '—'}</td>
+      <td>${m.producto}</td>
+      <td class="mono">${m.codigo}</td>
+      <td><span class="badge-pill ${m.tipo==='INGRESO'?'tipo-ingreso':'tipo-egreso'}">${m.tipo}</span></td>
+      <td><strong>${m.cantidad}</strong></td>
+      <td>${m.cantidad_anterior}</td>
+      <td>${m.cantidad_nueva}</td>
+      <td style="color:var(--muted);font-size:0.82rem;">${m.nota ?? ''}</td>
+    </tr>`).join('');
+  }
+
+  function applyFilters() {
+    const search = document.getElementById('histSearch').value.toLowerCase();
+    const tipo   = document.getElementById('histTipo').value;
+    const filtered = allMovs.filter(m => {
+      const ms = !search || m.producto.toLowerCase().includes(search) || m.codigo.toLowerCase().includes(search);
+      const mt = !tipo   || m.tipo === tipo;
+      return ms && mt;
+    });
+    renderHistorial(filtered);
+  }
+
+  ['histSearch','histTipo'].forEach(id =>
+    document.getElementById(id).addEventListener('input', applyFilters));
+
+  init();
+</script>
+</body>
+</html>

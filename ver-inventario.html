@@ -9,151 +9,176 @@
   <script src="db.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Ver Inventario</h1>
-    <p>Lista completa de productos con estado de stock en tiempo real.</p>
-  </header>
 
-  <main class="container">
-    <section class="card">
-      <!-- Filtros -->
-      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center;">
-        <input id="filterSearch" type="search" placeholder="Buscar…"
-          style="flex:1;min-width:160px;padding:0.6rem 0.9rem;border:1px solid #ccc;border-radius:999px;font-size:0.9rem;">
-        <select id="filterCateg" style="padding:0.6rem;border:1px solid #ccc;border-radius:999px;font-size:0.9rem;">
-          <option value="">Todas las categorías</option>
-        </select>
-        <select id="filterStatus" style="padding:0.6rem;border:1px solid #ccc;border-radius:999px;font-size:0.9rem;">
-          <option value="">Todos los estados</option>
-          <option value="bajo">Bajo Stock</option>
-          <option value="normal">Normal</option>
-        </select>
+<div id="loading"><div class="spinner"></div><span>Cargando base de datos…</span></div>
+
+<div id="app" style="display:none;">
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">📦</div>
+      <h2>Inventario</h2>
+      <p>Sistema de control de stock</p>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <div class="nav-item" onclick="location.href='index.html'"><span class="nav-icon">🏠</span> Inicio</div>
+      <div class="nav-item active" onclick="location.href='ver-inventario.html'"><span class="nav-icon">📋</span> Ver Inventario</div>
+      <div class="nav-section-label" style="margin-top:0.5rem;">Movimientos</div>
+      <div class="nav-item" onclick="location.href='agregar-producto.html'"><span class="nav-icon">➕</span> Agregar Producto</div>
+      <div class="nav-item" onclick="location.href='ingreso-producto.html'"><span class="nav-icon">📥</span> Registrar Ingreso</div>
+      <div class="nav-item" onclick="location.href='egreso-producto.html'"><span class="nav-icon">📤</span> Registrar Egreso</div>
+      <div class="nav-section-label" style="margin-top:0.5rem;">Reportes</div>
+      <div class="nav-item" onclick="location.href='generar-reporte.html'"><span class="nav-icon">📊</span> Generar Reporte</div>
+      <div class="nav-item" onclick="location.href='historial.html'"><span class="nav-icon">🕒</span> Historial</div>
+    </div>
+    <div class="sidebar-footer">inventario1 · SQL.js + localStorage</div>
+  </nav>
+
+  <div id="main">
+    <div id="topbar">
+      <h1>Ver Inventario</h1>
+      <span id="lowStockBadge" class="badge">⚠ <span id="lowCount">0</span> bajo mínimo</span>
+    </div>
+
+    <div class="page active">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Inventario Completo</div>
+            <div class="card-subtitle">Todos los productos con estado de stock en tiempo real</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑 Eliminar selec.</button>
+        </div>
+
+        <div class="filter-row">
+          <div class="search-wrap">
+            <span class="search-ico">🔍</span>
+            <input type="search" class="search-input" id="invSearch" placeholder="Buscar…">
+          </div>
+          <select class="filter-select" id="invCateg">
+            <option value="">Todas las categorías</option>
+          </select>
+          <select class="filter-select" id="invStatus">
+            <option value="">Todos los estados</option>
+            <option value="bajo">Bajo Stock</option>
+            <option value="normal">Normal</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th><input type="checkbox" id="selectAll"></th>
+              <th>Nombre</th><th>Categoría</th><th>Código</th>
+              <th>Cantidad</th><th>Mínimo</th><th>Estado</th><th>Acciones</th>
+            </tr></thead>
+            <tbody id="invBody"></tbody>
+          </table>
+          <div id="invEmpty" class="empty-state" style="display:none;">
+            <div class="empty-icon">📭</div>
+            <div>No se encontraron productos.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+          <a href="index.html" class="btn btn-secondary">← Volver</a>
+        </div>
       </div>
+    </div>
+  </div>
+</div>
 
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="border-bottom:2px solid #e2e8f0;background:#f7faff;">
-              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;"><input type="checkbox" id="selectAll"></th>
-              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Nombre</th>
-              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Categoría</th>
-              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Código</th>
-              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Cantidad</th>
-              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Mínimo</th>
-              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Estado</th>
-              <th style="text-align:left;padding:0.6rem 0.5rem;font-size:0.85rem;color:#6b7280;">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="inventoryTable"></tbody>
-        </table>
-      </div>
-      <p id="emptyMsg" style="display:none;color:#6b7280;text-align:center;padding:2rem;">No se encontraron productos.</p>
+<script>
+  let db, allProducts = [];
 
-      <div class="actions" style="margin-top:1rem;">
-        <button class="btn secondary" onclick="deleteSelected()">Eliminar seleccionados</button>
-        <a href="index.html" class="btn secondary" style="text-decoration:none;color:inherit;">Volver</a>
-      </div>
-    </section>
-  </main>
+  async function init() {
+    db = await DB.getDB();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display     = 'flex';
 
-  <script>
-    let db, allProducts = [];
+    // Badge bajo mínimo
+    const [r] = DB.qry(`SELECT SUM(CASE WHEN cantidad<=stock_minimo THEN 1 ELSE 0 END) AS bajos FROM productos`);
+    document.getElementById('lowCount').textContent = r.bajos ?? 0;
+    document.getElementById('lowStockBadge').classList.toggle('visible', r.bajos > 0);
 
-    async function init() {
-      db = await DB.getDB();
-      // Categorías para el filtro
-      const cats = DB.query(db, 'SELECT id, nombre FROM categorias ORDER BY nombre');
-      const sel = document.getElementById('filterCateg');
-      cats.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id; opt.textContent = c.nombre; sel.appendChild(opt);
-      });
-      loadProducts();
-    }
+    // Categorías para el filtro
+    const cats = DB.qry('SELECT id,nombre FROM categorias ORDER BY nombre');
+    const sel  = document.getElementById('invCateg');
+    cats.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.nombre}</option>`; });
 
-    function loadProducts() {
-      allProducts = DB.query(db, `
-        SELECT p.id, p.nombre, c.nombre AS categoria, p.codigo,
-               p.cantidad, p.stock_minimo,
-               CASE WHEN p.cantidad <= p.stock_minimo THEN 'Bajo Stock' ELSE 'Normal' END AS estado,
-               p.actualizado
-        FROM productos p JOIN categorias c ON c.id = p.id_categoria
-        ORDER BY p.nombre`);
-      applyFilters();
-    }
+    loadProducts();
+  }
 
-    function applyFilters() {
-      const search = document.getElementById('filterSearch').value.toLowerCase();
-      const categId = document.getElementById('filterCateg').value;
-      const status  = document.getElementById('filterStatus').value;
-      const cats    = DB.query(db, 'SELECT id, nombre FROM categorias');
-      const categMap = Object.fromEntries(cats.map(c => [c.nombre, c.id]));
+  function loadProducts() {
+    allProducts = DB.qry(`SELECT p.id,p.nombre,c.nombre AS categoria,p.codigo,
+      p.cantidad,p.stock_minimo,
+      CASE WHEN p.cantidad<=p.stock_minimo THEN 'Bajo Stock' ELSE 'Normal' END AS estado
+      FROM productos p JOIN categorias c ON c.id=p.id_categoria ORDER BY p.nombre`);
+    applyFilters();
+  }
 
-      let filtered = allProducts.filter(p => {
-        const matchSearch = !search ||
-          p.nombre.toLowerCase().includes(search) ||
-          p.categoria.toLowerCase().includes(search) ||
-          p.codigo.toLowerCase().includes(search);
-        const matchCateg  = !categId || String(categMap[p.categoria]) === String(categId);
-        const matchStatus = !status ||
-          (status === 'bajo' && p.estado === 'Bajo Stock') ||
-          (status === 'normal' && p.estado === 'Normal');
-        return matchSearch && matchCateg && matchStatus;
-      });
-      renderTable(filtered);
-    }
-
-    function renderTable(products) {
-      const tbody = document.getElementById('inventoryTable');
-      const empty = document.getElementById('emptyMsg');
-      if (!products.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
-      empty.style.display = 'none';
-      tbody.innerHTML = products.map(p => `
-        <tr style="border-bottom:1px solid #eee;" data-id="${p.id}">
-          <td style="padding:0.5rem;"><input type="checkbox" class="cb" data-id="${p.id}"></td>
-          <td style="padding:0.5rem;">${p.nombre}</td>
-          <td style="padding:0.5rem;">${p.categoria}</td>
-          <td style="padding:0.5rem;font-family:monospace;">${p.codigo}</td>
-          <td style="padding:0.5rem;font-weight:600;">${p.cantidad}</td>
-          <td style="padding:0.5rem;">${p.stock_minimo}</td>
-          <td style="padding:0.5rem;">
-            <span style="padding:0.2rem 0.6rem;border-radius:999px;font-size:0.8rem;font-weight:600;
-              background:${p.estado==='Bajo Stock'?'#fff5f5':'#f0fff4'};
-              color:${p.estado==='Bajo Stock'?'#e53e3e':'#38a169'};">${p.estado}</span>
-          </td>
-          <td style="padding:0.5rem;">
-            <button class="btn secondary" style="font-size:0.8rem;padding:0.35rem 0.7rem;"
-              onclick="deleteOne(${p.id}, '${p.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
-          </td>
-        </tr>`).join('');
-    }
-
-    function deleteOne(id, nombre) {
-      if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
-      DB.run(db, 'DELETE FROM movimientos WHERE id_producto = ?', [id]);
-      DB.run(db, 'DELETE FROM productos WHERE id = ?', [id]);
-      loadProducts();
-    }
-
-    function deleteSelected() {
-      const ids = Array.from(document.querySelectorAll('.cb:checked')).map(cb => parseInt(cb.dataset.id));
-      if (!ids.length) { alert('Selecciona al menos un producto.'); return; }
-      if (!confirm(`¿Eliminar ${ids.length} producto(s)? Esta acción no se puede deshacer.`)) return;
-      ids.forEach(id => {
-        DB.run(db, 'DELETE FROM movimientos WHERE id_producto = ?', [id]);
-        DB.run(db, 'DELETE FROM productos WHERE id = ?', [id]);
-      });
-      loadProducts();
-    }
-
-    document.getElementById('selectAll').addEventListener('change', function () {
-      document.querySelectorAll('.cb').forEach(cb => cb.checked = this.checked);
+  function applyFilters() {
+    const search  = document.getElementById('invSearch').value.toLowerCase();
+    const categId = document.getElementById('invCateg').value;
+    const status  = document.getElementById('invStatus').value;
+    const cats    = DB.qry('SELECT id,nombre FROM categorias');
+    const cmap    = Object.fromEntries(cats.map(c => [c.nombre, String(c.id)]));
+    const filtered = allProducts.filter(p => {
+      const ms = !search || p.nombre.toLowerCase().includes(search) ||
+                 p.categoria.toLowerCase().includes(search) || p.codigo.toLowerCase().includes(search);
+      const mc = !categId || cmap[p.categoria] === String(categId);
+      const me = !status ||
+        (status==='bajo'   && p.estado==='Bajo Stock') ||
+        (status==='normal' && p.estado==='Normal');
+      return ms && mc && me;
     });
+    renderTable(filtered);
+  }
 
-    ['filterSearch','filterCateg','filterStatus'].forEach(id =>
-      document.getElementById(id).addEventListener('input', applyFilters));
+  function renderTable(rows) {
+    const tbody = document.getElementById('invBody');
+    const empty = document.getElementById('invEmpty');
+    if (!rows.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+    empty.style.display = 'none';
+    tbody.innerHTML = rows.map(p => `<tr>
+      <td><input type="checkbox" class="cb" data-id="${p.id}"></td>
+      <td>${p.nombre}</td><td>${p.categoria}</td>
+      <td class="mono">${p.codigo}</td>
+      <td><strong>${p.cantidad}</strong></td>
+      <td>${p.stock_minimo}</td>
+      <td><span class="badge-pill ${p.estado==='Bajo Stock'?'badge-danger':'badge-success'}">${p.estado}</span></td>
+      <td>
+        <button class="btn btn-danger btn-sm" onclick="eliminarUno(${p.id},'${p.nombre.replace(/'/g,"\\'")}')">🗑</button>
+      </td>
+    </tr>`).join('');
+  }
 
-    init();
-  </script>
+  function eliminarUno(id, nombre) {
+    if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    DB.run('DELETE FROM movimientos WHERE id_producto=?', [id]);
+    DB.run('DELETE FROM productos WHERE id=?', [id]);
+    loadProducts();
+  }
+
+  function deleteSelected() {
+    const ids = Array.from(document.querySelectorAll('.cb:checked')).map(cb => parseInt(cb.dataset.id));
+    if (!ids.length) { alert('Selecciona al menos un producto.'); return; }
+    if (!confirm(`¿Eliminar ${ids.length} producto(s)? Esta acción no se puede deshacer.`)) return;
+    ids.forEach(id => {
+      DB.run('DELETE FROM movimientos WHERE id_producto=?', [id]);
+      DB.run('DELETE FROM productos WHERE id=?', [id]);
+    });
+    loadProducts();
+  }
+
+  document.getElementById('selectAll').addEventListener('change', function () {
+    document.querySelectorAll('.cb').forEach(cb => cb.checked = this.checked);
+  });
+
+  ['invSearch','invCateg','invStatus'].forEach(id =>
+    document.getElementById(id).addEventListener('input', applyFilters));
+
+  init();
+</script>
 </body>
 </html>

@@ -9,84 +9,197 @@
   <script src="db.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Inventario - Panel de inicio</h1>
-    <p>Controla tu stock con rapidez: agrega productos, revisa niveles y genera reportes desde una sola pantalla.</p>
-  </header>
 
-  <main class="container">
-    <section class="card">
-      <div class="search-box">
-        <input id="searchInput" type="search" placeholder="Buscar producto, categoría o código..." aria-label="Buscar inventario" />
-      </div>
-      <div id="searchResults" style="display:none; margin-bottom:1rem;">
-        <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
-          <thead>
-            <tr style="border-bottom:1px solid #ccc;">
-              <th style="text-align:left;padding:0.4rem;">Nombre</th>
-              <th style="text-align:left;padding:0.4rem;">Categoría</th>
-              <th style="text-align:left;padding:0.4rem;">Código</th>
-              <th style="text-align:left;padding:0.4rem;">Cantidad</th>
-              <th style="text-align:left;padding:0.4rem;">Estado</th>
-            </tr>
-          </thead>
-          <tbody id="searchBody"></tbody>
-        </table>
-      </div>
-      <div class="actions">
-        <button class="btn primary"   onclick="location.href='agregar-producto.html'">Agregar producto</button>
-        <button class="btn secondary" onclick="location.href='egreso-producto.html'">Egresar producto</button>
-        <button class="btn secondary" onclick="location.href='ver-inventario.html'">Ver inventario</button>
-        <button class="btn secondary" onclick="location.href='generar-reporte.html'">Generar reporte</button>
-      </div>
-    </section>
+<div id="loading">
+  <div class="spinner"></div>
+  <span>Cargando base de datos…</span>
+</div>
 
-    <section class="stats">
-      <div class="stat"><small>Total de productos</small><span id="statTotal">…</span></div>
-      <div class="stat"><small>Unidades en stock</small><span id="statUnits">…</span></div>
-      <div class="stat"><small>Productos bajo mínimo</small><span id="statLowStock">…</span></div>
-    </section>
-  </main>
+<div id="app" style="display:none;">
 
-  <script>
-    let db;
-    async function init() {
-      db = await DB.getDB();
-      updateStats();
-    }
-    function updateStats() {
-      const [rep] = DB.query(db, `
-        SELECT COUNT(*) AS total,
-               SUM(cantidad) AS unidades,
-               SUM(CASE WHEN cantidad <= stock_minimo THEN 1 ELSE 0 END) AS bajos
-        FROM productos`);
-      document.getElementById('statTotal').textContent    = rep.total    ?? 0;
-      document.getElementById('statUnits').textContent    = rep.unidades ?? 0;
-      document.getElementById('statLowStock').textContent = rep.bajos    ?? 0;
-    }
-    document.getElementById('searchInput').addEventListener('input', function () {
-      const term = this.value.trim();
-      const box  = document.getElementById('searchResults');
-      const body = document.getElementById('searchBody');
-      if (!term || !db) { box.style.display = 'none'; return; }
-      const like = '%' + term + '%';
-      const rows = DB.query(db, `
-        SELECT p.nombre, c.nombre AS categoria, p.codigo, p.cantidad,
-               CASE WHEN p.cantidad <= p.stock_minimo THEN 'Bajo Stock' ELSE 'Normal' END AS estado
-        FROM productos p JOIN categorias c ON c.id = p.id_categoria
-        WHERE p.nombre LIKE ? OR c.nombre LIKE ? OR p.codigo LIKE ?
-        ORDER BY p.nombre LIMIT 20`, [like, like, like]);
-      body.innerHTML = rows.map(r => `
-        <tr style="border-bottom:1px solid #eee;">
-          <td style="padding:0.4rem;">${r.nombre}</td>
-          <td style="padding:0.4rem;">${r.categoria}</td>
-          <td style="padding:0.4rem;">${r.codigo}</td>
-          <td style="padding:0.4rem;">${r.cantidad}</td>
-          <td style="padding:0.4rem;color:${r.estado==='Bajo Stock'?'#e53e3e':'#38a169'};">${r.estado}</td>
-        </tr>`).join('');
-      box.style.display = rows.length ? 'block' : 'none';
-    });
-    init();
-  </script>
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">📦</div>
+      <h2>Inventario</h2>
+      <p>Sistema de control de stock</p>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <div class="nav-item active" onclick="location.href='index.html'">
+        <span class="nav-icon">🏠</span> Inicio
+      </div>
+      <div class="nav-item" onclick="location.href='ver-inventario.html'">
+        <span class="nav-icon">📋</span> Ver Inventario
+      </div>
+      <div class="nav-section-label" style="margin-top:0.5rem;">Movimientos</div>
+      <div class="nav-item" onclick="location.href='agregar-producto.html'">
+        <span class="nav-icon">➕</span> Agregar Producto
+      </div>
+      <div class="nav-item" onclick="location.href='ingreso-producto.html'">
+        <span class="nav-icon">📥</span> Registrar Ingreso
+      </div>
+      <div class="nav-item" onclick="location.href='egreso-producto.html'">
+        <span class="nav-icon">📤</span> Registrar Egreso
+      </div>
+      <div class="nav-section-label" style="margin-top:0.5rem;">Reportes</div>
+      <div class="nav-item" onclick="location.href='generar-reporte.html'">
+        <span class="nav-icon">📊</span> Generar Reporte
+      </div>
+      <div class="nav-item" onclick="location.href='historial.html'">
+        <span class="nav-icon">🕒</span> Historial
+      </div>
+    </div>
+    <div class="sidebar-footer">inventario1 · SQL.js + localStorage</div>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="topbar">
+      <h1>Panel de Inicio</h1>
+      <span id="lowStockBadge" class="badge">⚠ <span id="lowCount">0</span> bajo mínimo</span>
+    </div>
+
+    <div class="page active">
+
+      <!-- Estadísticas -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--primary-light);">📦</div>
+          <div class="stat-value" id="s-total">—</div>
+          <div class="stat-label">Total de Productos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--success-light);">🔢</div>
+          <div class="stat-value" id="s-units">—</div>
+          <div class="stat-label">Unidades en Stock</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--warning-light);">⚠️</div>
+          <div class="stat-value" id="s-low" style="color:var(--warning);">—</div>
+          <div class="stat-label">Bajo Stock Mínimo</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--primary-light);">📁</div>
+          <div class="stat-value" id="s-cats">—</div>
+          <div class="stat-label">Categorías</div>
+        </div>
+      </div>
+
+      <!-- Búsqueda rápida -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Búsqueda Rápida</div>
+            <div class="card-subtitle">Busca por nombre, código o categoría</div>
+          </div>
+        </div>
+        <div class="search-wrap" style="margin-bottom:1rem;">
+          <span class="search-ico">🔍</span>
+          <input type="search" class="search-input" id="homeSearch" placeholder="Buscar producto, código, categoría…">
+        </div>
+        <div id="homeSearchResults" style="display:none;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Nombre</th><th>Categoría</th><th>Código</th><th>Cantidad</th><th>Estado</th>
+              </tr></thead>
+              <tbody id="homeSearchBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:1.25rem;">
+          <button class="btn btn-primary"   onclick="location.href='agregar-producto.html'">➕ Agregar Producto</button>
+          <button class="btn btn-secondary" onclick="location.href='ingreso-producto.html'">📥 Registrar Ingreso</button>
+          <button class="btn btn-secondary" onclick="location.href='egreso-producto.html'">📤 Registrar Egreso</button>
+          <button class="btn btn-secondary" onclick="location.href='ver-inventario.html'">📋 Ver Inventario</button>
+          <button class="btn btn-secondary" onclick="location.href='generar-reporte.html'">📊 Generar Reporte</button>
+        </div>
+      </div>
+
+      <!-- Productos bajo mínimo -->
+      <div class="card" id="lowStockCard" style="display:none;">
+        <div class="card-header">
+          <div>
+            <div class="card-title" style="color:var(--warning);">⚠ Productos con Bajo Stock</div>
+            <div class="card-subtitle">Requieren reabastecimiento urgente</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Producto</th><th>Código</th><th>Disponible</th><th>Mínimo</th><th>Acción</th>
+            </tr></thead>
+            <tbody id="lowStockBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /page -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+  let db;
+
+  async function init() {
+    db = await DB.getDB();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display     = 'flex';
+    updateStats();
+    updateLowStock();
+  }
+
+  function updateStats() {
+    const [r] = DB.qry(`SELECT COUNT(*) AS total, SUM(cantidad) AS units,
+      SUM(CASE WHEN cantidad<=stock_minimo THEN 1 ELSE 0 END) AS bajos FROM productos`);
+    const [c] = DB.qry(`SELECT COUNT(*) AS n FROM categorias`);
+    document.getElementById('s-total').textContent = r.total ?? 0;
+    document.getElementById('s-units').textContent = r.units ?? 0;
+    document.getElementById('s-low').textContent   = r.bajos ?? 0;
+    document.getElementById('s-cats').textContent  = c.n ?? 0;
+
+    const badge = document.getElementById('lowStockBadge');
+    document.getElementById('lowCount').textContent = r.bajos;
+    badge.classList.toggle('visible', r.bajos > 0);
+  }
+
+  function updateLowStock() {
+    const bajos = DB.qry(`SELECT p.nombre,p.codigo,p.cantidad,p.stock_minimo
+      FROM productos p WHERE p.cantidad<=p.stock_minimo ORDER BY p.nombre`);
+    const card = document.getElementById('lowStockCard');
+    if (!bajos.length) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    document.getElementById('lowStockBody').innerHTML = bajos.map(b => `
+      <tr>
+        <td>${b.nombre}</td>
+        <td class="mono">${b.codigo}</td>
+        <td><strong style="color:var(--danger)">${b.cantidad}</strong></td>
+        <td>${b.stock_minimo}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="location.href='ingreso-producto.html'">+ Ingresar</button></td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('homeSearch').addEventListener('input', function () {
+    const term = this.value.trim();
+    const box  = document.getElementById('homeSearchResults');
+    const body = document.getElementById('homeSearchBody');
+    if (!term || !db) { box.style.display = 'none'; return; }
+    const like = '%' + term + '%';
+    const rows = DB.qry(`SELECT p.nombre,c.nombre AS categoria,p.codigo,p.cantidad,
+      CASE WHEN p.cantidad<=p.stock_minimo THEN 'Bajo Stock' ELSE 'Normal' END AS estado
+      FROM productos p JOIN categorias c ON c.id=p.id_categoria
+      WHERE p.nombre LIKE ? OR c.nombre LIKE ? OR p.codigo LIKE ?
+      ORDER BY p.nombre LIMIT 20`, [like, like, like]);
+    body.innerHTML = rows.map(r => `<tr>
+      <td>${r.nombre}</td><td>${r.categoria}</td>
+      <td class="mono">${r.codigo}</td><td>${r.cantidad}</td>
+      <td><span class="badge-pill ${r.estado==='Bajo Stock'?'badge-danger':'badge-success'}">${r.estado}</span></td>
+    </tr>`).join('');
+    box.style.display = rows.length ? '' : 'none';
+  });
+
+  init();
+</script>
 </body>
 </html>

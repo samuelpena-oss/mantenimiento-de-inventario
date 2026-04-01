@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Egreso de Producto - Inventario</title>
+  <title>Ingreso de Producto - Inventario</title>
   <link rel="stylesheet" href="Styles/Style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
   <script src="db.js"></script>
@@ -25,8 +25,8 @@
       <div class="nav-item" onclick="location.href='ver-inventario.html'"><span class="nav-icon">📋</span> Ver Inventario</div>
       <div class="nav-section-label" style="margin-top:0.5rem;">Movimientos</div>
       <div class="nav-item" onclick="location.href='agregar-producto.html'"><span class="nav-icon">➕</span> Agregar Producto</div>
-      <div class="nav-item" onclick="location.href='ingreso-producto.html'"><span class="nav-icon">📥</span> Registrar Ingreso</div>
-      <div class="nav-item active" onclick="location.href='egreso-producto.html'"><span class="nav-icon">📤</span> Registrar Egreso</div>
+      <div class="nav-item active" onclick="location.href='ingreso-producto.html'"><span class="nav-icon">📥</span> Registrar Ingreso</div>
+      <div class="nav-item" onclick="location.href='egreso-producto.html'"><span class="nav-icon">📤</span> Registrar Egreso</div>
       <div class="nav-section-label" style="margin-top:0.5rem;">Reportes</div>
       <div class="nav-item" onclick="location.href='generar-reporte.html'"><span class="nav-icon">📊</span> Generar Reporte</div>
       <div class="nav-item" onclick="location.href='historial.html'"><span class="nav-icon">🕒</span> Historial</div>
@@ -35,42 +35,42 @@
   </nav>
 
   <div id="main">
-    <div id="topbar"><h1>Registrar Egreso de Stock</h1></div>
+    <div id="topbar"><h1>Registrar Ingreso de Stock</h1></div>
 
     <div class="page active">
       <div class="card" style="max-width:560px;">
         <div class="card-header">
           <div>
-            <div class="card-title">Registrar Egreso</div>
-            <div class="card-subtitle">Reduce la cantidad disponible de un producto existente</div>
+            <div class="card-title">Registrar Ingreso</div>
+            <div class="card-subtitle">Aumenta la cantidad disponible de un producto existente</div>
           </div>
         </div>
 
-        <div id="eg-error"   class="alert alert-error"></div>
-        <div id="eg-success" class="alert alert-success"></div>
+        <div id="in-error"   class="alert alert-error"></div>
+        <div id="in-success" class="alert alert-success"></div>
 
         <div class="form-group" style="margin-bottom:0.85rem;">
-          <label for="eg-prod">Producto *</label>
-          <select class="form-select" id="eg-prod" onchange="updateStockInfo()">
+          <label for="in-prod">Producto *</label>
+          <select class="form-select" id="in-prod" onchange="updateStockInfo()">
             <option value="">— Seleccionar producto —</option>
           </select>
         </div>
 
-        <div class="stock-info" id="eg-stockInfo"></div>
+        <div class="stock-info" id="in-stockInfo"></div>
 
         <div class="form-grid">
           <div class="form-group">
-            <label for="eg-qty">Cantidad a Egresar *</label>
-            <input type="number" class="form-input" id="eg-qty" min="1" value="1">
+            <label for="in-qty">Cantidad a Ingresar *</label>
+            <input type="number" class="form-input" id="in-qty" min="1" value="1">
           </div>
           <div class="form-group">
-            <label for="eg-nota">Nota (opcional)</label>
-            <input type="text" class="form-input" id="eg-nota" placeholder="Ej: Entrega a cliente">
+            <label for="in-nota">Nota (opcional)</label>
+            <input type="text" class="form-input" id="in-nota" placeholder="Ej: Reabastecimiento proveedor">
           </div>
         </div>
 
         <div class="form-actions">
-          <button class="btn btn-primary" onclick="registrarEgreso()">📤 Registrar Egreso</button>
+          <button class="btn btn-primary" onclick="registrarIngreso()">📥 Registrar Ingreso</button>
           <a href="index.html" class="btn btn-secondary">← Volver</a>
         </div>
       </div>
@@ -90,57 +90,53 @@
 
   function cargarProductos() {
     const prods = DB.qry('SELECT p.id,p.nombre,p.codigo,p.cantidad FROM productos p ORDER BY p.nombre');
-    const sel   = document.getElementById('eg-prod');
+    const sel   = document.getElementById('in-prod');
     sel.innerHTML = '<option value="">— Seleccionar producto —</option>';
     prods.forEach(p => {
-      sel.innerHTML += `<option value="${p.id}" data-qty="${p.cantidad}">${p.nombre} (${p.codigo}) — Disponible: ${p.cantidad}</option>`;
+      sel.innerHTML += `<option value="${p.id}" data-qty="${p.cantidad}">${p.nombre} (${p.codigo}) — Stock: ${p.cantidad}</option>`;
     });
-    document.getElementById('eg-qty').value  = '1';
-    document.getElementById('eg-nota').value = '';
-    document.getElementById('eg-stockInfo').classList.remove('show');
+    document.getElementById('in-qty').value  = '1';
+    document.getElementById('in-nota').value = '';
+    document.getElementById('in-stockInfo').classList.remove('show');
   }
 
   function updateStockInfo() {
-    const sel  = document.getElementById('eg-prod');
-    const info = document.getElementById('eg-stockInfo');
+    const sel  = document.getElementById('in-prod');
+    const info = document.getElementById('in-stockInfo');
     const opt  = sel.options[sel.selectedIndex];
     if (!sel.value) { info.classList.remove('show'); return; }
     info.textContent = `Stock actual: ${opt.dataset.qty} unidades`;
     info.classList.add('show');
   }
 
-  function registrarEgreso() {
-    const prodId = parseInt(document.getElementById('eg-prod').value);
-    const qty    = parseInt(document.getElementById('eg-qty').value);
-    const nota   = document.getElementById('eg-nota').value.trim();
+  function registrarIngreso() {
+    const prodId = parseInt(document.getElementById('in-prod').value);
+    const qty    = parseInt(document.getElementById('in-qty').value);
+    const nota   = document.getElementById('in-nota').value.trim();
     hideAlerts();
 
     if (!prodId) { showAlert('error', 'Selecciona un producto.'); return; }
     if (!qty || qty < 1) { showAlert('error', 'La cantidad debe ser mayor a 0.'); return; }
 
     const [prod] = DB.qry('SELECT * FROM productos WHERE id=?', [prodId]);
-    if (qty > prod.cantidad) {
-      showAlert('error', `Stock insuficiente. Disponible: ${prod.cantidad} unidades.`);
-      return;
-    }
-    const nueva = prod.cantidad - qty;
+    const nueva  = prod.cantidad + qty;
     DB.run(`UPDATE productos SET cantidad=?, actualizado=datetime('now') WHERE id=?`, [nueva, prodId]);
     DB.run(`INSERT INTO movimientos (id_producto,tipo,cantidad,cantidad_anterior,cantidad_nueva,nota)
-            VALUES (?,'EGRESO',?,?,?,?)`, [prodId, qty, prod.cantidad, nueva, nota||null]);
+            VALUES (?,'INGRESO',?,?,?,?)`, [prodId, qty, prod.cantidad, nueva, nota||null]);
 
-    showAlert('success', `✓ Se egresaron ${qty} unidad(es). Stock nuevo: ${nueva}.`);
+    showAlert('success', `✓ Se ingresaron ${qty} unidad(es). Stock nuevo: ${nueva}.`);
     cargarProductos();
   }
 
   function showAlert(type, msg) {
-    const el = document.getElementById('eg-' + (type==='error' ? 'error' : 'success'));
+    const el = document.getElementById('in-' + (type==='error' ? 'error' : 'success'));
     el.textContent = msg;
     el.className   = `alert alert-${type==='error'?'error':'success'} show`;
     setTimeout(() => el.classList.remove('show'), 5000);
   }
   function hideAlerts() {
-    document.getElementById('eg-error').classList.remove('show');
-    document.getElementById('eg-success').classList.remove('show');
+    document.getElementById('in-error').classList.remove('show');
+    document.getElementById('in-success').classList.remove('show');
   }
 
   init();

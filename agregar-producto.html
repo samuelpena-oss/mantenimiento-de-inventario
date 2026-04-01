@@ -9,112 +9,138 @@
   <script src="db.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Agregar Producto</h1>
-    <p>Completa los detalles para agregar un nuevo producto al inventario.</p>
-  </header>
 
-  <main class="container">
-    <section class="card">
-      <div id="errorMsg" style="display:none;color:#e53e3e;margin-bottom:1rem;padding:0.75rem;background:#fff5f5;border-radius:8px;border:1px solid #fed7d7;"></div>
-      <div id="successMsg" style="display:none;color:#38a169;margin-bottom:1rem;padding:0.75rem;background:#f0fff4;border-radius:8px;border:1px solid #c6f6d5;"></div>
+<div id="loading"><div class="spinner"></div><span>Cargando base de datos…</span></div>
 
-      <div style="margin-bottom:1rem;">
-        <label for="name">Nombre del Producto:</label>
-        <input type="text" id="name" placeholder="Ej: Teclado Mecánico" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
-      </div>
-      <div style="margin-bottom:1rem;">
-        <label for="category">Categoría:</label>
-        <select id="category" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
-          <option value="">-- Seleccionar categoría --</option>
-        </select>
-      </div>
-      <div style="margin-bottom:1rem;">
-        <label for="code">Código único:</label>
-        <input type="text" id="code" placeholder="Ej: ELEC-005" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
-      </div>
-      <div style="margin-bottom:1rem;">
-        <label for="quantity">Cantidad inicial:</label>
-        <input type="number" id="quantity" min="0" value="0" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
-      </div>
-      <div style="margin-bottom:1.5rem;">
-        <label for="minStock">Stock Mínimo:</label>
-        <input type="number" id="minStock" min="0" value="0" style="width:100%;padding:0.75rem;border:1px solid #ccc;border-radius:8px;margin-top:0.3rem;">
-      </div>
+<div id="app" style="display:none;">
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">📦</div>
+      <h2>Inventario</h2>
+      <p>Sistema de control de stock</p>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <div class="nav-item" onclick="location.href='index.html'"><span class="nav-icon">🏠</span> Inicio</div>
+      <div class="nav-item" onclick="location.href='ver-inventario.html'"><span class="nav-icon">📋</span> Ver Inventario</div>
+      <div class="nav-section-label" style="margin-top:0.5rem;">Movimientos</div>
+      <div class="nav-item active" onclick="location.href='agregar-producto.html'"><span class="nav-icon">➕</span> Agregar Producto</div>
+      <div class="nav-item" onclick="location.href='ingreso-producto.html'"><span class="nav-icon">📥</span> Registrar Ingreso</div>
+      <div class="nav-item" onclick="location.href='egreso-producto.html'"><span class="nav-icon">📤</span> Registrar Egreso</div>
+      <div class="nav-section-label" style="margin-top:0.5rem;">Reportes</div>
+      <div class="nav-item" onclick="location.href='generar-reporte.html'"><span class="nav-icon">📊</span> Generar Reporte</div>
+      <div class="nav-item" onclick="location.href='historial.html'"><span class="nav-icon">🕒</span> Historial</div>
+    </div>
+    <div class="sidebar-footer">inventario1 · SQL.js + localStorage</div>
+  </nav>
 
-      <div class="actions">
-        <button class="btn primary" id="btnGuardar">Agregar Producto</button>
-        <a href="index.html" class="btn secondary" style="text-decoration:none;color:inherit;">Volver</a>
-      </div>
-    </section>
-  </main>
+  <div id="main">
+    <div id="topbar"><h1>Agregar Producto</h1></div>
 
-  <script>
-    let db;
-    async function init() {
-      db = await DB.getDB();
-      // Poblar categorías desde la BD
-      const cats = DB.query(db, 'SELECT id, nombre FROM categorias ORDER BY nombre');
-      const sel = document.getElementById('category');
-      cats.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.textContent = c.nombre;
-        sel.appendChild(opt);
-      });
+    <div class="page active">
+      <div class="card" style="max-width:620px;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Agregar Nuevo Producto</div>
+            <div class="card-subtitle">Completa los datos para registrar el producto en el inventario</div>
+          </div>
+        </div>
+
+        <div id="ag-error"   class="alert alert-error"></div>
+        <div id="ag-success" class="alert alert-success"></div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="ag-name">Nombre del Producto *</label>
+            <input type="text" class="form-input" id="ag-name" placeholder="Ej: Teclado Mecánico">
+          </div>
+          <div class="form-group">
+            <label for="ag-categ">Categoría *</label>
+            <select class="form-select" id="ag-categ">
+              <option value="">— Seleccionar —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="ag-code">Código Único *</label>
+            <input type="text" class="form-input" id="ag-code" placeholder="Ej: ELEC-005">
+          </div>
+          <div class="form-group">
+            <label for="ag-qty">Cantidad Inicial</label>
+            <input type="number" class="form-input" id="ag-qty" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label for="ag-min">Stock Mínimo</label>
+            <input type="number" class="form-input" id="ag-min" min="0" value="0">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="guardarProducto()">✅ Agregar Producto</button>
+          <a href="index.html" class="btn btn-secondary">← Volver</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let db;
+
+  async function init() {
+    db = await DB.getDB();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display     = 'flex';
+    const cats = DB.qry('SELECT id,nombre FROM categorias ORDER BY nombre');
+    const sel  = document.getElementById('ag-categ');
+    cats.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.nombre}</option>`; });
+  }
+
+  function guardarProducto() {
+    const nombre   = document.getElementById('ag-name').value.trim();
+    const idCateg  = parseInt(document.getElementById('ag-categ').value);
+    const codigo   = document.getElementById('ag-code').value.trim().toUpperCase();
+    const cantidad = parseInt(document.getElementById('ag-qty').value) || 0;
+    const stockMin = parseInt(document.getElementById('ag-min').value) || 0;
+
+    hideAlerts();
+    if (!nombre || !idCateg || !codigo) {
+      showAlert('error', 'Por favor completa todos los campos obligatorios (*).');
+      return;
     }
+    const dup = DB.qry('SELECT id FROM productos WHERE codigo=?', [codigo]);
+    if (dup.length) { showAlert('error', `El código "${codigo}" ya existe.`); return; }
 
-    document.getElementById('btnGuardar').addEventListener('click', function () {
-      const nombre     = document.getElementById('name').value.trim();
-      const idCateg    = parseInt(document.getElementById('category').value);
-      const codigo     = document.getElementById('code').value.trim().toUpperCase();
-      const cantidad   = parseInt(document.getElementById('quantity').value);
-      const stockMin   = parseInt(document.getElementById('minStock').value);
-      const errBox     = document.getElementById('errorMsg');
-      const okBox      = document.getElementById('successMsg');
-      errBox.style.display = 'none';
-      okBox.style.display  = 'none';
+    try {
+      DB.run(`INSERT INTO productos (nombre,codigo,id_categoria,cantidad,stock_minimo,actualizado)
+              VALUES (?,?,?,?,?,datetime('now'))`, [nombre, codigo, idCateg, cantidad, stockMin]);
+      if (cantidad > 0) {
+        const [prod] = DB.qry('SELECT id FROM productos WHERE codigo=?', [codigo]);
+        DB.run(`INSERT INTO movimientos (id_producto,tipo,cantidad,cantidad_anterior,cantidad_nueva,nota)
+                VALUES (?,'INGRESO',?,0,?,'Stock inicial')`, [prod.id, cantidad, cantidad]);
+      }
+      showAlert('success', `✓ Producto "${nombre}" agregado exitosamente.`);
+      document.getElementById('ag-name').value  = '';
+      document.getElementById('ag-code').value  = '';
+      document.getElementById('ag-qty').value   = '0';
+      document.getElementById('ag-min').value   = '0';
+      document.getElementById('ag-categ').value = '';
+    } catch(e) {
+      showAlert('error', 'Error al guardar: ' + e.message);
+    }
+  }
 
-      if (!nombre || !idCateg || !codigo) {
-        errBox.textContent = 'Por favor completa todos los campos obligatorios.';
-        errBox.style.display = 'block'; return;
-      }
-      // Verificar código duplicado
-      const dup = DB.query(db, 'SELECT id FROM productos WHERE codigo = ?', [codigo]);
-      if (dup.length) {
-        errBox.textContent = `El código "${codigo}" ya existe en la base de datos.`;
-        errBox.style.display = 'block'; return;
-      }
-      try {
-        DB.run(db,
-          `INSERT INTO productos (nombre, codigo, id_categoria, cantidad, stock_minimo, actualizado)
-           VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-          [nombre, codigo, idCateg, cantidad, stockMin]
-        );
-        // Registrar movimiento de ingreso inicial si cantidad > 0
-        if (cantidad > 0) {
-          const [prod] = DB.query(db, 'SELECT id FROM productos WHERE codigo = ?', [codigo]);
-          DB.run(db,
-            `INSERT INTO movimientos (id_producto, tipo, cantidad, cantidad_anterior, cantidad_nueva, nota)
-             VALUES (?, 'INGRESO', ?, 0, ?, 'Stock inicial')`,
-            [prod.id, cantidad, cantidad]
-          );
-        }
-        okBox.textContent = `✓ Producto "${nombre}" agregado exitosamente.`;
-        okBox.style.display = 'block';
-        // Limpiar formulario
-        document.getElementById('name').value     = '';
-        document.getElementById('code').value     = '';
-        document.getElementById('quantity').value = '0';
-        document.getElementById('minStock').value = '0';
-        document.getElementById('category').value = '';
-      } catch(e) {
-        errBox.textContent = 'Error al guardar: ' + e.message;
-        errBox.style.display = 'block';
-      }
-    });
+  function showAlert(type, msg) {
+    const el = document.getElementById('ag-' + (type==='error' ? 'error' : 'success'));
+    el.textContent = msg;
+    el.className   = `alert alert-${type==='error'?'error':'success'} show`;
+    setTimeout(() => el.classList.remove('show'), 5000);
+  }
+  function hideAlerts() {
+    document.getElementById('ag-error').classList.remove('show');
+    document.getElementById('ag-success').classList.remove('show');
+  }
 
-    init();
-  </script>
+  init();
+</script>
 </body>
 </html>
